@@ -6,6 +6,7 @@ import { Box, Input, Button, Select, FormControl, FormLabel, Text, Heading, Prog
 const ResearchApp = () => {
   const [companyName, setCompanyName] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [tavilyApiKey, setTavilyApiKey] = useState('');
   const [provider, setProvider] = useState('anthropic');
   const [isResearching, setIsResearching] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -70,7 +71,8 @@ const ResearchApp = () => {
         body: JSON.stringify({
           company_name: companyName,
           llm_provider: provider,
-          api_key: apiKey
+          api_key: apiKey,
+          tavily_api_key: tavilyApiKey || null
         })
       });
 
@@ -127,6 +129,181 @@ const ResearchApp = () => {
     const maxWidth = pageWidth - (2 * margin);
     let yPosition = 20;
     
+    const checkNewPage = (spaceNeeded = 20) => {
+      if (yPosition > pageHeight - spaceNeeded) {
+        doc.addPage();
+        yPosition = 20;
+      }
+    };
+    
+    const parseAndRenderMarkdown = (text, leftMargin = margin) => {
+      const lines = text.split('\n');
+      
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        
+        // Skip empty lines but add small space
+        if (!line.trim()) {
+          yPosition += 3;
+          continue;
+        }
+        
+        // Headers (### Header)
+        if (line.startsWith('###')) {
+          checkNewPage(15);
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          const headerText = line.replace(/^###\s*/, '');
+          doc.text(headerText, leftMargin, yPosition);
+          yPosition += 8;
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          continue;
+        }
+        
+        if (line.startsWith('##')) {
+          checkNewPage(15);
+          doc.setFontSize(13);
+          doc.setFont('helvetica', 'bold');
+          const headerText = line.replace(/^##\s*/, '');
+          doc.text(headerText, leftMargin, yPosition);
+          yPosition += 8;
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          continue;
+        }
+        
+        // Bullet points (- or *)
+        if (line.match(/^\s*[-*]\s+/)) {
+          checkNewPage();
+          const bulletText = line.replace(/^\s*[-*]\s+/, '').replace(/\*\*(.*?)\*\*/g, '$1');
+          const wrappedLines = doc.splitTextToSize(bulletText, maxWidth - 10);
+          
+          // Draw bullet
+          doc.circle(leftMargin + 2, yPosition - 1.5, 0.8, 'F');
+          
+          wrappedLines.forEach((wrappedLine, idx) => {
+            if (idx > 0) checkNewPage();
+            doc.text(wrappedLine, leftMargin + 5, yPosition);
+            yPosition += 5;
+          });
+          continue;
+        }
+        
+        // Numbered lists (1. or 2. etc)
+        if (line.match(/^\s*\d+\.\s+/)) {
+          checkNewPage();
+          const match = line.match(/^\s*(\d+)\.\s+(.*)/);
+          if (match) {
+            const num = match[1];
+            const text = match[2].replace(/\*\*(.*?)\*\*/g, '$1');
+            const wrappedLines = doc.splitTextToSize(text, maxWidth - 12);
+            
+            wrappedLines.forEach((wrappedLine, idx) => {
+              if (idx > 0) checkNewPage();
+              if (idx === 0) {
+                doc.text(`${num}.`, leftMargin, yPosition);
+                doc.text(wrappedLine, leftMargin + 8, yPosition);
+              } else {
+                doc.text(wrappedLine, leftMargin + 8, yPosition);
+              }
+              yPosition += 5;
+            });
+          }
+          continue;
+        }
+        
+        // Tables (detect by | character)
+        if (line.includes('|')) {
+          // Collect all table lines
+          const tableLines = [];
+          while (i < lines.length && lines[i].includes('|')) {
+            tableLines.push(lines[i]);
+            i++;
+          }
+          i--; // Back up one since loop will increment
+          
+          if (tableLines.length >= 2) {
+            renderTable(tableLines, leftMargin);
+          }
+          continue;
+        }
+        
+        // Regular text (remove markdown bold)
+        checkNewPage();
+        const cleanText = line.replace(/\*\*(.*?)\*\*/g, '$1');
+        const wrappedLines = doc.splitTextToSize(cleanText, maxWidth - (leftMargin - margin));
+        wrappedLines.forEach(wrappedLine => {
+          checkNewPage();
+          doc.text(wrappedLine, leftMargin, yPosition);
+          yPosition += 5;
+        });
+      }
+    };
+    
+    const renderTable = (tableLines, leftMargin) => {
+      // Parse table
+      const rows = tableLines
+        .filter(line => !line.includes('---')) // Remove separator line
+        .map(line => 
+          line.split('|')
+            .map(cell => cell.trim())
+            .filter(cell => cell.length > 0)
+        );
+      
+      if (rows.length === 0) return;
+      
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+      
+      // Calculate column widths
+      const colCount = headers.length;
+      const colWidth = (maxWidth - (leftMargin - margin)) / colCount;
+      
+      checkNewPage(10 + (dataRows.length * 8));
+      
+      // Draw header row
+      doc.setFillColor(75, 85, 99); // Grey header
+      doc.rect(leftMargin, yPosition - 5, colWidth * colCount, 7, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      
+      headers.forEach((header, idx) => {
+        const text = doc.splitTextToSize(header, colWidth - 4);
+        doc.text(text[0] || '', leftMargin + (idx * colWidth) + 2, yPosition);
+      });
+      
+      yPosition += 7;
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'normal');
+      
+      // Draw data rows
+      dataRows.forEach((row, rowIdx) => {
+        checkNewPage(8);
+        
+        // Alternating row colors
+        if (rowIdx % 2 === 1) {
+          doc.setFillColor(243, 244, 246);
+          doc.rect(leftMargin, yPosition - 5, colWidth * colCount, 7, 'F');
+        }
+        
+        row.forEach((cell, colIdx) => {
+          const cellText = cell.replace(/\*\*(.*?)\*\*/g, '$1');
+          const text = doc.splitTextToSize(cellText, colWidth - 4);
+          doc.text(text[0] || '', leftMargin + (colIdx * colWidth) + 2, yPosition);
+        });
+        
+        yPosition += 7;
+      });
+      
+      // Draw table border
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(leftMargin, yPosition - (dataRows.length * 7) - 12, colWidth * colCount, (dataRows.length + 1) * 7);
+      
+      yPosition += 5;
+    };
+    
     // Title
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
@@ -135,56 +312,48 @@ const ResearchApp = () => {
     
     // Process each step
     const stepOrder = [
-      { key: 'step1_master_research', name: 'Strategic Objectives & Initiatives' },
-      { key: 'step2_bu_alignment', name: 'Business-Unit Strategic Alignment' },
+      { key: 'step1_strategic_objectives', name: 'Strategic Objectives' },
+      { key: 'step2_bu_alignment', name: 'Business Unit Alignment' },
       { key: 'step3_bu_deepdive', name: 'Business Unit Deep-Dive' },
-      { key: 'step4_ai_alignment', name: 'AI Alignment & Use Cases' },
-      { key: 'step5_persona_mapping', name: 'Persona Mapping & Outreach' },
-      { key: 'step6_value_realization', name: 'Value Realization & Strategic Alignment' },
-      { key: 'step7_outreach_email', name: 'Personalized Outreach Email' }
+      { key: 'step4_ai_alignment', name: 'AI Alignment' },
+      { key: 'step5_persona_mapping', name: 'Persona Mapping' },
+      { key: 'step6_value_realization', name: 'Value Realization' },
+      { key: 'step7_outreach_email', name: 'Outreach Email' }
     ];
     
     stepOrder.forEach((step, index) => {
       const content = results.steps[step.key];
       if (!content) return;
       
-      // Check if we need a new page
-      if (yPosition > pageHeight - 30) {
-        doc.addPage();
-        yPosition = 20;
-      }
+      checkNewPage(30);
       
       // Step header
-      doc.setFontSize(14);
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text(`${index + 1}. ${step.name}`, margin, yPosition);
-      yPosition += 8;
+      yPosition += 10;
       
-      // Content
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       
-      let textContent = '';
+      // Render content
       if (step.key === 'step3_bu_deepdive' && typeof content === 'object') {
         Object.entries(content).forEach(([bu, buContent]) => {
-          textContent += `\n${bu}:\n${buContent}\n`;
+          checkNewPage(20);
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.text(bu, margin + 5, yPosition);
+          yPosition += 8;
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          parseAndRenderMarkdown(buContent, margin + 5);
+          yPosition += 5;
         });
       } else {
-        textContent = content;
+        parseAndRenderMarkdown(content);
       }
       
-      // Split text into lines and add to PDF
-      const lines = doc.splitTextToSize(textContent, maxWidth);
-      lines.forEach(line => {
-        if (yPosition > pageHeight - 20) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        doc.text(line, margin, yPosition);
-        yPosition += 5;
-      });
-      
-      yPosition += 5; // Extra space between sections
+      yPosition += 8;
     });
     
     doc.save(`${results.company_name}_research.pdf`);
@@ -482,14 +651,14 @@ const ResearchApp = () => {
                 <GridItem>
                   <FormControl>
                     <FormLabel fontSize="lg" fontWeight="bold" color="purple.900">
-                      🔑 API Key
+                      🔑 LLM API Key
                     </FormLabel>
                     <Input
                       size="lg"
                       type="password"
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="Your API key"
+                      placeholder="Your LLM API key"
                       isDisabled={isResearching}
                       borderColor="purple.300"
                       focusBorderColor="purple.500"
@@ -497,6 +666,25 @@ const ResearchApp = () => {
                   </FormControl>
                 </GridItem>
               </Grid>
+
+              <FormControl>
+                <FormLabel fontSize="lg" fontWeight="bold" color="green.900">
+                  🔍 Tavily API Key (Optional - for real-time web search)
+                </FormLabel>
+                <Input
+                  size="lg"
+                  type="password"
+                  value={tavilyApiKey}
+                  onChange={(e) => setTavilyApiKey(e.target.value)}
+                  placeholder="Your Tavily API key (optional)"
+                  isDisabled={isResearching}
+                  borderColor="green.300"
+                  focusBorderColor="green.500"
+                />
+                <Text fontSize="sm" color="gray.600" mt={2}>
+                  Get 1,000 free searches/month at <a href="https://tavily.com" target="_blank" rel="noopener noreferrer" style={{color: '#2563eb', textDecoration: 'underline'}}>tavily.com</a>
+                </Text>
+              </FormControl>
 
               <Button
                 onClick={startResearch}

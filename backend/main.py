@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import asyncio
 import json
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 from research import ResearchOrchestrator
 
 app = FastAPI(title="Account Research API")
@@ -18,12 +18,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-orchestrator = ResearchOrchestrator()
-
 class ResearchRequest(BaseModel):
     company_name: str
     llm_provider: str = "anthropic"  # or "openai"
     api_key: str  # User provides their own API key
+    tavily_api_key: Optional[str] = None  # Optional Tavily API key for web search
 
 @app.get("/")
 async def root():
@@ -35,6 +34,9 @@ async def start_research(request: ResearchRequest):
     Run full 7-step research workflow.
     Returns streaming response with progress updates.
     """
+    # Create orchestrator with optional Tavily API key
+    orchestrator = ResearchOrchestrator(tavily_api_key=request.tavily_api_key)
+    
     async def generate_updates() -> AsyncGenerator[str, None]:
         try:
             async for update in orchestrator.run_full_research(

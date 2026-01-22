@@ -17,7 +17,7 @@ class LLMClient:
             self.model = "claude-sonnet-4-20250514"
         elif self.provider == "openai":
             self.api_url = "https://api.openai.com/v1/chat/completions"
-            self.model = "gpt-4o"
+            self.model = "gpt-4o-2024-11-20"
         else:
             raise ValueError(f"Unsupported provider: {provider}")
     

@@ -2,6 +2,17 @@
 
 A containerized application that generates comprehensive 7-step account intelligence reports using LLM APIs (Claude or GPT-4).
 
+## ⚠️ Important Note on Data Currency
+
+**LLM Training Data Limitation**: LLMs have knowledge cutoffs and don't access real-time internet data. 
+- Claude Sonnet 4 training data: up to early 2024
+- GPT-4o training data: up to October 2023
+
+The prompts explicitly instruct the models to use only 2024-2026 data and cite sources with dates. However, the models may still reference their training data from 2022-2023. For truly current information, consider:
+- Manually verifying the output against recent 10-K filings and earnings calls
+- Using a service with web search capabilities (e.g., Perplexity, SearchGPT)
+- Supplementing results with your own recent research
+
 ## 🏗️ Architecture
 
 - **Frontend**: React app (port 3000)

@@ -1,11 +1,13 @@
 import asyncio
-from typing import AsyncGenerator, Dict
+from typing import AsyncGenerator, Dict, Optional
 from llm_client import LLMClient
 from prompts import PromptTemplates
+from search_client import TavilySearchClient
 
 class ResearchOrchestrator:
-    def __init__(self):
+    def __init__(self, tavily_api_key: Optional[str] = None):
         self.prompts = PromptTemplates()
+        self.search_client = TavilySearchClient(tavily_api_key) if tavily_api_key else None
     
     async def run_full_research(
         self, 
@@ -42,9 +44,18 @@ class ResearchOrchestrator:
                 "progress_percent": 0
             }
             
-            step1_result = await llm.call_llm(
-                self.prompts.step1_master_research(company_name)
-            )
+            # Get recent web data if search is available
+            web_context = ""
+            if self.search_client:
+                web_context = self.search_client.search_for_step(
+                    company_name, "strategic objectives plans initiatives 2024 2025"
+                )
+            
+            step1_prompt = self.prompts.step1_master_research(company_name)
+            if web_context:
+                step1_prompt = web_context + "\n\n" + step1_prompt
+            
+            step1_result = await llm.call_llm(step1_prompt)
             results["steps"]["step1_strategic_objectives"] = step1_result
             
             yield {
@@ -64,9 +75,18 @@ class ResearchOrchestrator:
                 "progress_percent": 14
             }
             
-            step2_result = await llm.call_llm(
-                self.prompts.step2_bu_alignment(company_name, step1_result)
-            )
+            # Get recent web data if search is available
+            web_context = ""
+            if self.search_client:
+                web_context = self.search_client.search_for_step(
+                    company_name, "business units divisions segments structure 2024 2025"
+                )
+            
+            step2_prompt = self.prompts.step2_bu_alignment(company_name, step1_result)
+            if web_context:
+                step2_prompt = web_context + "\n\n" + step2_prompt
+            
+            step2_result = await llm.call_llm(step2_prompt)
             results["steps"]["step2_bu_alignment"] = step2_result
             
             yield {
@@ -98,9 +118,18 @@ class ResearchOrchestrator:
                     "progress_percent": 28 + (idx * 5)
                 }
                 
-                bu_result = await llm.call_llm(
-                    self.prompts.step3_bu_deepdive(company_name, bu, step1_result)
-                )
+                # Get recent web data if search is available
+                web_context = ""
+                if self.search_client:
+                    web_context = self.search_client.search_for_step(
+                        company_name, f"{bu} business unit operations initiatives 2024 2025"
+                    )
+                
+                step3_prompt = self.prompts.step3_bu_deepdive(company_name, bu, step1_result)
+                if web_context:
+                    step3_prompt = web_context + "\n\n" + step3_prompt
+                
+                bu_result = await llm.call_llm(step3_prompt)
                 step3_results[bu] = bu_result
             
             results["steps"]["step3_bu_deepdive"] = step3_results
@@ -122,9 +151,18 @@ class ResearchOrchestrator:
                 "progress_percent": 43
             }
             
-            step4_result = await llm.call_llm(
-                self.prompts.step4_ai_alignment(company_name, step1_result, step3_results)
-            )
+            # Get recent web data if search is available
+            web_context = ""
+            if self.search_client:
+                web_context = self.search_client.search_for_step(
+                    company_name, "AI artificial intelligence machine learning initiatives 2024 2025"
+                )
+            
+            step4_prompt = self.prompts.step4_ai_alignment(company_name, step1_result, step3_results)
+            if web_context:
+                step4_prompt = web_context + "\n\n" + step4_prompt
+            
+            step4_result = await llm.call_llm(step4_prompt)
             results["steps"]["step4_ai_alignment"] = step4_result
             
             yield {

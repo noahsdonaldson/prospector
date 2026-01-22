@@ -7,10 +7,16 @@ class PromptTemplates:
 **Role**
 You are a **strategic research analyst** tasked with compiling a fact-based view of {company_name}'s **current strategic objectives, initiatives, and success metrics**.
 
+⚠️ **CRITICAL: USE ONLY RECENT DATA (2024-2026)**
+- All data MUST be from 2024, 2025, or 2026 only
+- Explicitly state "As of 2024" or "In 2025" when citing information
+- If you cannot find recent data, explicitly state "Recent data not available" rather than using older information
+- DO NOT use data from 2023 or earlier unless explicitly noting it as historical context
+
 You must rely only on **credible, verifiable sources** and clearly cite where each insight comes from.
 
 **Objective**
-Research and synthesize the company's **strategic priorities for the current and next 2--3 years**, focusing on:
+Research and synthesize the company's **strategic priorities for 2024-2026**, focusing on:
 - Strategic objectives
 - Key initiatives
 - Measurable success metrics (financial, operational, customer, or workforce)
@@ -18,23 +24,25 @@ Research and synthesize the company's **strategic priorities for the current and
 The output should resemble an **executive strategy summary**, grounded in public disclosures.
 
 **Approved Source Hierarchy (Use in This Order)**
-1. **Primary Sources (Highest Priority)**
-   - Company website (strategy, products, investor relations)
-   - Annual Report / Form 10‑K / 20‑F
-   - Investor Day materials
-   - Earnings call transcripts (last 4--6 quarters)
+1. **Primary Sources (Highest Priority) - MUST BE FROM 2024-2026**
+   - Company website (strategy, products, investor relations) - check publication dates
+   - Annual Report / Form 10‑K / 20‑F (FY2024, FY2025, or FY2026 only)
+   - Investor Day materials (2024-2026 only)
+   - Earnings call transcripts (2024-2026 quarters only)
+   - **Note**: If using 10-K, specify the fiscal year (e.g., \"FY2024 10-K\")
 
-2. **Secondary Authoritative Sources**
-   - Shareholder letters
-   - ESG / Sustainability reports
-   - Regulatory filings
-   - Official press releases
+2. **Secondary Authoritative Sources - DATED 2024-2026**
+   - Shareholder letters (2024-2026)
+   - ESG / Sustainability reports (2024-2026)
+   - Regulatory filings (filed in 2024-2026)
+   - Official press releases (dated 2024-2026)
 
-3. **Tertiary Sources (Validation Only)**
-   - Reputable business media (e.g., WSJ, FT, Bloomberg, Reuters)
-   - Industry analyst reports (clearly labeled as analyst interpretation)
+3. **Tertiary Sources (Validation Only) - PUBLISHED 2024-2026**
+   - Reputable business media (e.g., WSJ, FT, Bloomberg, Reuters) - with publication dates
+   - Industry analyst reports (clearly labeled as analyst interpretation with date)
 
 ⚠️ Do **not** rely on blogs, marketing summaries, or AI‑generated secondary content without verification.
+⚠️ **REJECT any source dated before 2024** - if older data is the only available source, explicitly state \"No recent data available\"
 
 **Research Instructions**
 1. **Identify Strategic Themes**
@@ -86,6 +94,8 @@ Before finalizing:
 
 **Role**: You are a strategic research analyst specializing in corporate financial disclosures. Your task is to map the specific business segments of {company_name} to their overarching strategic objectives and measurable KPIs.
 
+⚠️ **DATA RECENCY REQUIREMENT**: Use only 2024-2026 data. Cite the year explicitly for all metrics and objectives.
+
 **Context from Step 1 (Strategic Objectives):**
 {context_snippet}
 
@@ -114,6 +124,8 @@ Note: If a specific metric or objective is not found in these sources, mark it a
         return f"""**Step 3 Prompt: Business Unit Deep-Dive (Operational Level)**
 
 **Role:** You are a strategic research analyst specializing in divisional operations. Your task is to provide a granular, deep-dive profile of: **{business_unit}** within {company_name}.
+
+⚠️ **DATA RECENCY**: Focus on 2024-2026 operational data and near-term roadmap. Explicitly date all metrics.
 
 **Context from Step 1 (Strategic Objectives):**
 {context_snippet}
@@ -158,7 +170,9 @@ Note: If a specific metric or objective is not found in these sources, mark it a
 **Context from Step 3 (Business Unit Objectives):**
 {bu_summary}
 
-**Objective:** Synthesize a technical "AI Alignment" table that demonstrates how {company_name} can leverage Agentic AI (autonomous agents, predictive modeling, and automated orchestration) to achieve their 2025--2026 strategic goals.
+**Objective:** Synthesize a technical "AI Alignment" table that demonstrates how {company_name} can leverage Agentic AI (autonomous agents, predictive modeling, and automated orchestration) to achieve their 2024-2026 strategic goals.
+
+⚠️ **USE CURRENT DATA**: Base recommendations on the company's most recent (2024-2026) strategic priorities and operational challenges.
 
 **Instructions & Output Format:** Create a table with the following four columns, ensuring the content is grounded in industry-specific pain points and current AI capabilities:
 
