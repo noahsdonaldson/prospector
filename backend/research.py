@@ -182,11 +182,20 @@ class ResearchOrchestrator:
                 "progress_percent": 57
             }
             
-            step5_result = await llm.call_llm(
-                self.prompts.step5_persona_mapping(
-                    company_name, step1_result, step3_results, step4_result
+            # Get recent web data for executive names if search is available
+            web_context = ""
+            if self.search_client:
+                web_context = self.search_client.search_for_step(
+                    company_name, "executives leadership management team names titles 2024 2025"
                 )
+            
+            step5_prompt = self.prompts.step5_persona_mapping(
+                company_name, step1_result, step3_results, step4_result
             )
+            if web_context:
+                step5_prompt = web_context + "\n\n" + step5_prompt
+            
+            step5_result = await llm.call_llm(step5_prompt)
             results["steps"]["step5_persona_mapping"] = step5_result
             
             yield {

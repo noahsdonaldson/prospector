@@ -208,8 +208,16 @@ Note: If a specific metric or objective is not found in these sources, mark it a
 
 **Objective**: Identify the "Decision Makers" and "Targetable Lieutenants" within the specific Business Units and map our AI value proposition to their specific daily pressures and KPIs.
 
+**CRITICAL: You MUST research and find actual executive names for these roles. Check:**
+- Company website leadership/management pages
+- LinkedIn executive profiles
+- Press releases and news articles
+- Annual reports and SEC filings
+- Recent earnings call transcripts
+Do NOT use "TBD" unless you have exhausted all public sources.
+
 **Task Requirements**
-1. **Identify Target Personas**: Based on the BU structure, list 3--5 specific job titles (Lieutenants) who would be the "Economic Buyer," the "Champion," and the "Technical Gatekeeper." **If specific names of executives in these roles are publicly available, include them.**
+1. **Identify Target Personas WITH NAMES**: Research and find the actual names of 3--5 specific executives who are the "Economic Buyer," the "Champion," and the "Technical Gatekeeper" in the relevant business units. Include their exact job titles.
 
 2. **The "Why Now" (Pain Points)**: For each persona, identify the specific "on-the-ground" pain points they face that the AI use cases solve.
 
@@ -221,15 +229,14 @@ Note: If a specific metric or objective is not found in these sources, mark it a
 
 6. **Value Proposition Mapping**: Create a concise "Value Hook" for each persona that connects the AI KPI lift to the Enterprise Strategy.
 
-7. **Draft Outreach "Hooks"**: Write a 2-sentence "Executive Hook" for a LinkedIn message or email for the primary lead and the most relevant Lieutenant.
-
 **Output Format:** Provide the results in a comprehensive Persona & Value Realization Matrix (Table) with the following columns:
 
-| Name (if available) | Persona Title | Role in Decision | Biggest Pain Point | AI / Agentic AI Use Case | Expected Outcome | Strategic Objective Alignment | Tailored Value Hook |
-|---------------------|---------------|------------------|-------------------|--------------------------|------------------|------------------------------|-------------------|
+| Name | Persona Title | Role in Decision | Biggest Pain Point | AI / Agentic AI Use Case | Expected Outcome | Strategic Objective Alignment | Tailored Value Hook |
+|------|---------------|------------------|-------------------|--------------------------|------------------|------------------------------|-------------------|
 
-**Note:** 
-- For the Name column, include the actual name of the executive if publicly known (from company website, LinkedIn, press releases). If not available, write "TBD" or leave blank.
+**IMPORTANT:** 
+- The Name column MUST contain actual executive names from public sources - this is not optional
+- If you cannot find a specific name after thorough research, explain why in the table cell
 - Use symbols (↑/↓) in Expected Outcome column for performance metrics
 - Ensure Strategic Objective Alignment uses exact terminology from Step 1
 - Provide 2--3 quantifiable KPI improvements based on industry benchmarks"""
