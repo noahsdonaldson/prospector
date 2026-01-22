@@ -213,16 +213,26 @@ Note: If a specific metric or objective is not found in these sources, mark it a
 
 2. **The "Why Now" (Pain Points)**: For each persona, identify the specific "on-the-ground" pain points they face that the AI use cases solve.
 
-3. **Value Proposition Mapping**: Create a concise "Value Hook" for each persona that connects the AI KPI lift to the Enterprise Strategy.
+3. **AI Solution Mapping**: For each persona, specify the exact AI/Agentic AI use case that addresses their pain point.
 
-4. **Draft Outreach "Hooks"**: Write a 2-sentence "Executive Hook" for a LinkedIn message or email for the primary lead and the most relevant Lieutenant.
+4. **Expected Outcomes**: Define quantifiable success metrics and expected KPI improvements (e.g., ↑ STP %, ↓ OPEX %, ↓ Case Prep Time). Use symbols (↑/↓) to denote performance lifts or cost reductions.
 
-**Output Format:** Provide the results in a Persona Outreach Matrix (Table) with the following columns:
+5. **Strategic Alignment**: Map each persona's outcomes directly to the enterprise's overarching strategic pillars from Step 1.
 
-| Name (if available) | Persona Title | Role in Decision (Buyer/Champion/User) | Specific Pain Point | Tailored Value Hook |
-|---------------------|---------------|---------------------------------------|-------------------|-------------------|
+6. **Value Proposition Mapping**: Create a concise "Value Hook" for each persona that connects the AI KPI lift to the Enterprise Strategy.
 
-**Note:** For the Name column, include the actual name of the executive if publicly known (from company website, LinkedIn, press releases). If not available, write "TBD" or leave blank."""
+7. **Draft Outreach "Hooks"**: Write a 2-sentence "Executive Hook" for a LinkedIn message or email for the primary lead and the most relevant Lieutenant.
+
+**Output Format:** Provide the results in a comprehensive Persona & Value Realization Matrix (Table) with the following columns:
+
+| Name (if available) | Persona Title | Role in Decision | Biggest Pain Point | AI / Agentic AI Use Case | Expected Outcome | Strategic Objective Alignment | Tailored Value Hook |
+|---------------------|---------------|------------------|-------------------|--------------------------|------------------|------------------------------|-------------------|
+
+**Note:** 
+- For the Name column, include the actual name of the executive if publicly known (from company website, LinkedIn, press releases). If not available, write "TBD" or leave blank.
+- Use symbols (↑/↓) in Expected Outcome column for performance metrics
+- Ensure Strategic Objective Alignment uses exact terminology from Step 1
+- Provide 2--3 quantifiable KPI improvements based on industry benchmarks"""
 
     def step6_value_realization(self, company_name: str, step1_context: str, step3_contexts: dict, step4_context: str, step5_context: str) -> str:
         context1 = step1_context[:1000] if len(step1_context) > 1000 else step1_context
@@ -244,12 +254,15 @@ Note: If a specific metric or objective is not found in these sources, mark it a
 
 **Objective:** Create a structured table that maps specific decision-makers (Personas) to their operational friction points, proposes specific Agentic AI solutions, defines quantifiable success metrics, and demonstrates direct alignment with the enterprise's overarching strategic pillars.
 
+**IMPORTANT:** Use the exact personas (names and titles) identified in Step 5's Persona Mapping table. Do not create new personas - reference the same individuals/roles already identified.
+
 **Instructions:** Using the data gathered in the previous steps, please generate a table with the following five columns:
 
-| Lieutenant Persona | Biggest Pain Point | AI / Agentic AI Use Case | Expected Outcome | Strategic Objective Alignment |
-|-------------------|-------------------|--------------------------|------------------|------------------------------|
+| Name (from Step 5) | Lieutenant Persona (Title from Step 5) | Biggest Pain Point | AI / Agentic AI Use Case | Expected Outcome | Strategic Objective Alignment |
+|-------------------|-------------------|-------------------|--------------------------|------------------|------------------------------|
 
 **Output Requirements:**
+- **Use the same names and titles from Step 5** - ensure consistency between Persona Mapping and Value Realization
 - Present the information in a clean, professional table.
 - Use symbols (↑/↓) for the Expected Outcome column to denote performance lifts or cost reductions.
 - Ensure the "Strategic Objective Alignment" column uses the exact terminology found in the Enterprise Strategy (Step 1).
