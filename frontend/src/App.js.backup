@@ -1,0 +1,391 @@
+import React, { useState } from 'react';
+import { AlertCircle, Copy, Download, Hammer, Gem } from 'lucide-react';
+import { Box, Input, Button, Grid, GridItem, Select, FormControl, FormLabel, Text, Heading, Progress, Alert, AlertIcon, AlertDescription, Tabs, TabList, TabPanels, Tab, TabPanel, VStack, HStack, Container } from '@chakra-ui/react';
+
+const ResearchApp = () => {
+  const [companyName, setCompanyName] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [provider, setProvider] = useState('anthropic');
+  const [isResearching, setIsResearching] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState('');
+  const [results, setResults] = useState(null);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('step1');
+
+  const steps = [
+    { id: 'step1', name: '⛰️ Strategic Objectives', key: 'step1_strategic_objectives' },
+    { id: 'step2', name: '🗺️ Business Unit Alignment', key: 'step2_bu_alignment' },
+    { id: 'step3', name: '⛏️ BU Deep-Dive', key: 'step3_bu_deepdive' },
+    { id: 'step4', name: '🤖 AI Alignment', key: 'step4_ai_alignment' },
+    { id: 'step5', name: '👥 Persona Mapping', key: 'step5_persona_mapping' },
+    { id: 'step6', name: '💰 Value Realization', key: 'step6_value_realization' },
+    { id: 'step7', name: '✉️ Outreach Email', key: 'step7_outreach_email' }
+  ];
+
+  const miningMessages = [
+    '⛏️ Breaking ground...',
+    '🔍 Surveying the landscape...',
+    '⚒️ Digging deeper...',
+    '💎 Discovering insights...',
+    '🏔️ Scaling new heights...',
+    '🗺️ Mapping the territory...',
+    '⛰️ Mining strategic objectives...',
+    '💡 Unearthing opportunities...',
+    '🎯 Striking gold...',
+    '✨ Polishing the gems...'
+  ];
+
+  const getProgressEmoji = (percent) => {
+    if (percent < 20) return '⛏️';
+    if (percent < 40) return '🔨';
+    if (percent < 60) return '💎';
+    if (percent < 80) return '✨';
+    return '🏆';
+  };
+
+  const startResearch = async () => {
+    if (!companyName.trim()) {
+      setError('Please enter a company name');
+      return;
+    }
+    if (!apiKey.trim()) {
+      setError('Please enter your API key');
+      return;
+    }
+
+    setIsResearching(true);
+    setProgress(0);
+    setCurrentStep('Starting research...');
+    setError(null);
+    setResults(null);
+
+    try {
+      const response = await fetch('http://localhost:8000/api/research', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          company_name: companyName,
+          llm_provider: provider,
+          api_key: apiKey
+        })
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.type === 'progress') {
+              setProgress(data.progress_percent);
+              setCurrentStep(data.message);
+            } else if (data.type === 'step_complete') {
+              setProgress(data.progress_percent);
+              setCurrentStep(`Completed: ${data.step_name}`);
+            } else if (data.type === 'complete') {
+              setResults(data.results);
+              setIsResearching(false);
+              setActiveTab('step1');
+            } else if (data.type === 'error') {
+              setError(data.message);
+              setIsResearching(false);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      setError(`Failed to connect to backend: ${err.message}`);
+      setIsResearching(false);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const downloadResults = () => {
+    if (!results) return;
+    
+    const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${results.company_name}_research.json`;
+    a.click();
+  };
+
+  const renderStepContent = (stepKey) => {
+    if (!results) return null;
+    
+    const content = results.steps[stepKey];
+    
+    if (stepKey === 'step3_bu_deepdive' && typeof content === 'object') {
+      return (
+        <div className="space-y-6">
+          {Object.entries(content).map(([bu, buContent]) => (
+            <div key={bu} className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-lg mb-3 text-blue-700">{bu}</h4>
+              <pre className="whitespace-pre-wrap text-sm font-mono">{buContent}</pre>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    
+    return (
+      <pre className="whitespace-pre-wrap text-sm font-mono">{content}</pre>
+    );
+  };
+
+  return (
+    <Box minH="100vh" w="100%" bgGradient="linear(to-br, amber.50, orange.50, yellow.50)">
+      {/* Animated Banner Header */}
+      <Box className="gradient-animate" bgGradient="linear(to-r, amber.600, orange.500, yellow.500)" py={8} shadow="2xl">
+        <Container maxW="7xl">
+          <HStack justify="center" spacing={6}>
+            <Text fontSize="8xl" className="float-animate">⛏️</Text>
+            <Heading size="4xl" color="white" fontWeight="black" textShadow="lg">
+              PROSPECTOR
+            </Heading>
+            <Text fontSize="8xl" className="float-animate" style={{ animationDelay: '1s' }}>💎</Text>
+          </HStack>
+        </Container>
+      </Box>
+
+      {/* Main Content */}
+      <Container maxW="5xl" py={12}>
+        <Box bg="white" rounded="3xl" shadow="2xl" borderWidth={4} borderColor="amber.400" overflow="hidden">
+          <Box p={{ base: 8, md: 12 }}>
+            {/* Input Section */}
+            <VStack spacing={6} mb={10} align="stretch">
+              <FormControl>
+                <FormLabel fontSize="lg" fontWeight="bold" color="amber.900">
+                  Company Search
+                </FormLabel>
+                <Input
+                  size="lg"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="e.g., JPMorgan Chase, Microsoft, Tesla"
+                  isDisabled={isResearching}
+                  borderColor="amber.300"
+                  focusBorderColor="amber.500"
+                  _hover={{ borderColor: 'amber.400' }}
+                />
+              </FormControl>
+
+              <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={6}>
+                <GridItem>
+                  <FormControl>
+                    <FormLabel fontSize="lg" fontWeight="bold" color="blue.900">
+                      🤖 LLM Provider
+                    </FormLabel>
+                    <Select
+                      size="lg"
+                      value={provider}
+                      onChange={(e) => setProvider(e.target.value)}
+                      isDisabled={isResearching}
+                      borderColor="blue.300"
+                      focusBorderColor="blue.500"
+                    >
+                      <option value="anthropic">🎭 Anthropic (Claude)</option>
+                      <option value="openai">🌟 OpenAI (GPT-4)</option>
+                    </Select>
+                  </FormControl>
+                </GridItem>
+
+                <GridItem>
+                  <FormControl>
+                    <FormLabel fontSize="lg" fontWeight="bold" color="purple.900">
+                      🔑 API Key
+                    </FormLabel>
+                    <Input
+                      size="lg"
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="Your API key"
+                      isDisabled={isResearching}
+                      borderColor="purple.300"
+                      focusBorderColor="purple.500"
+                    />
+                  </FormControl>
+                </GridItem>
+              </Grid>
+
+              <Button
+                onClick={startResearch}
+                isDisabled={isResearching}
+                size="lg"
+                w="full"
+                py={8}
+                fontSize="2xl"
+                fontWeight="black"
+                bgGradient="linear(to-r, amber.500, orange.500, yellow.500)"
+                _hover={{ bgGradient: 'linear(to-r, amber.600, orange.600, yellow.600)' }}
+                _disabled={{ bg: 'gray.400' }}
+                color="white"
+                borderWidth={4}
+                borderColor="amber.600"
+                shadow="2xl"
+                className="glow-animate gradient-animate"
+              >
+                {isResearching ? (
+                  <HStack spacing={4}>
+                    <Hammer className="animate-bounce" size={32} />
+                    <Text>⛏️ MINING DATA...</Text>
+                  </HStack>
+                ) : (
+                  <HStack spacing={4}>
+                    <Hammer size={32} />
+                    <Text>💎 START PROSPECTING 💎</Text>
+                  </HStack>
+                )}
+              </Button>
+            </VStack>
+
+          {/* Mining Progress Animation */}
+          {isResearching && (
+            <Box mb={8} bgGradient="linear(to-r, amber.50, orange.50)" p={6} rounded="xl" borderWidth={2} borderColor="amber.300">
+              <HStack justify="space-between" mb={3}>
+                <HStack spacing={3}>
+                  <Text fontSize="3xl" className="animate-pulse">{getProgressEmoji(progress)}</Text>
+                  <Text fontSize="lg" fontWeight="semibold" color="amber.800">{currentStep}</Text>
+                </HStack>
+                <Text fontSize="2xl" fontWeight="bold" color="amber.600">{progress}%</Text>
+              </HStack>
+              <Progress
+                value={progress}
+                size="lg"
+                colorScheme="orange"
+                bg="amber.100"
+                borderRadius="full"
+                borderWidth={2}
+                borderColor="amber.300"
+              />
+              <Text fontSize="sm" color="amber.700" mt={2} textAlign="center" fontStyle="italic">
+                {miningMessages[Math.floor(progress / 10) % miningMessages.length]}
+              </Text>
+            </Box>
+          )}
+
+          {/* Error Display */}
+          {error && (
+            <Alert status="error" mb={8} rounded="lg">
+              <AlertIcon />
+              <Box>
+                <Text fontWeight="semibold">Error</Text>
+                <AlertDescription fontSize="sm">{error}</AlertDescription>
+              </Box>
+            </Alert>
+          )}
+
+          {/* Mining Results Section */}
+          {results && (
+            <Box mt={8} borderTopWidth={4} borderColor="amber.300" pt={8}>
+              <HStack justify="space-between" mb={6} bgGradient="linear(to-r, amber.100, orange.100)" p={6} rounded="xl" borderWidth={2} borderColor="amber.300">
+                <HStack spacing={3}>
+                  <Text fontSize="4xl">💎</Text>
+                  <Box>
+                    <Heading size="lg" color="amber.800">
+                      Strike Gold: {results.company_name}
+                    </Heading>
+                    <Text color="amber.600">Your prospecting mission is complete!</Text>
+                  </Box>
+                </HStack>
+                <Button
+                  onClick={downloadResults}
+                  leftIcon={<Download size={20} />}
+                  bgGradient="linear(to-r, green.600, green.700)"
+                  _hover={{ bgGradient: 'linear(to-r, green.700, green.800)' }}
+                  color="white"
+                  size="md"
+                  fontWeight="semibold"
+                >
+                  Download Gems
+                </Button>
+              </HStack>
+
+              {/* Mining Claim Tabs */}
+              <Tabs variant="soft-rounded" colorScheme="orange" index={steps.findIndex(s => s.id === activeTab)} onChange={(index) => setActiveTab(steps[index].id)}>
+                <TabList flexWrap="wrap" gap={3} mb={6} borderBottomWidth={4} borderColor="amber.200" pb={4}>
+                  {steps.map((step) => (
+                    <Tab
+                      key={step.id}
+                      fontWeight="bold"
+                      _selected={{ bgGradient: 'linear(to-r, amber.600, orange.600)', color: 'white' }}
+                    >
+                      {step.name}
+                    </Tab>
+                  ))}
+                </TabList>
+
+                <TabPanels>
+                  {steps.map((step) => (
+                    <TabPanel key={step.id} p={0}>
+                      <Box bgGradient="linear(to-br, amber.50, orange.50)" rounded="xl" p={8} minH="96" borderWidth={2} borderColor="amber.200">
+                        <HStack justify="space-between" mb={6}>
+                          <Heading size="md" color="amber.800">
+                            {step.name}
+                          </Heading>
+                          <Button
+                            onClick={() => {
+                              const content = results.steps[step.key];
+                              const text = typeof content === 'object' 
+                                ? JSON.stringify(content, null, 2) 
+                                : content;
+                              copyToClipboard(text);
+                            }}
+                            leftIcon={<Copy size={16} />}
+                            size="sm"
+                            bg="white"
+                            borderWidth={2}
+                            borderColor="amber.300"
+                            _hover={{ bg: 'amber.50' }}
+                            fontWeight="semibold"
+                            color="amber.700"
+                          >
+                            Copy Insight
+                          </Button>
+                        </HStack>
+                        <Box bg="white" rounded="xl" p={6} borderWidth={2} borderColor="amber.200" overflowY="auto" maxH="96" shadow="inner">
+                          {renderStepContent(step.key)}
+                        </Box>
+                      </Box>
+                    </TabPanel>
+                  ))}
+                </TabPanels>
+              </Tabs>
+            </Box>
+          )}
+
+          {/* Footer */}
+          <Box mt={10} pt={8} borderTopWidth={4} borderColor="amber.300" textAlign="center" bgGradient="linear(to-r, amber.50, orange.50)" mx={{ base: -8, md: -12 }} px={{ base: 8, md: 12 }} pb={8}>
+            <HStack justify="center" spacing={3} color="amber.800" mb={3}>
+              <Gem size={24} color="#d97706" />
+              <Text fontSize="base" fontWeight="bold">🔒 Your API keys stay secure - No data stored in our mines</Text>
+              <Gem size={24} color="#d97706" />
+            </HStack>
+            <Text fontSize="base" color="amber.700" fontWeight="semibold" mt={2}>⏱️ Estimated prospecting time: 5-10 minutes per company</Text>
+            <Text fontSize="sm" color="gray.600" mt={3}>⛏️ Built with FastAPI, React, Claude & GPT-4</Text>
+          </Box>
+        </Box>
+      </Container>
+    </Box>
+  );
+};
+
+export default ResearchApp;
