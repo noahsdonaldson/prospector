@@ -209,7 +209,7 @@ Note: If a specific metric or objective is not found in these sources, mark it a
 **Objective**: Identify the "Decision Makers" and "Targetable Lieutenants" within the specific Business Units and map our AI value proposition to their specific daily pressures and KPIs.
 
 **Task Requirements**
-1. **Identify Target Personas**: Based on the BU structure, list 3--5 specific job titles (Lieutenants) who would be the "Economic Buyer," the "Champion," and the "Technical Gatekeeper."
+1. **Identify Target Personas**: Based on the BU structure, list 3--5 specific job titles (Lieutenants) who would be the "Economic Buyer," the "Champion," and the "Technical Gatekeeper." **If specific names of executives in these roles are publicly available, include them.**
 
 2. **The "Why Now" (Pain Points)**: For each persona, identify the specific "on-the-ground" pain points they face that the AI use cases solve.
 
@@ -219,8 +219,10 @@ Note: If a specific metric or objective is not found in these sources, mark it a
 
 **Output Format:** Provide the results in a Persona Outreach Matrix (Table) with the following columns:
 
-| Persona Title | Role in Decision (Buyer/Champion/User) | Specific Pain Point | Tailored Value Hook |
-|---------------|---------------------------------------|-------------------|-------------------|"""
+| Name (if available) | Persona Title | Role in Decision (Buyer/Champion/User) | Specific Pain Point | Tailored Value Hook |
+|---------------------|---------------|---------------------------------------|-------------------|-------------------|
+
+**Note:** For the Name column, include the actual name of the executive if publicly known (from company website, LinkedIn, press releases). If not available, write "TBD" or leave blank."""
 
     def step6_value_realization(self, company_name: str, step1_context: str, step3_contexts: dict, step4_context: str, step5_context: str) -> str:
         context1 = step1_context[:1000] if len(step1_context) > 1000 else step1_context

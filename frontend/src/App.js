@@ -129,6 +129,27 @@ const ResearchApp = () => {
     const maxWidth = pageWidth - (2 * margin);
     let yPosition = 20;
     
+    // Comprehensive markdown and HTML stripping function
+    const stripMarkdown = (text) => {
+      if (!text) return '';
+      return text
+        .replace(/<[^>]*>/g, '')              // HTML tags
+        .replace(/\*\*\*(.*?)\*\*\*/g, '$1')  // Bold italic
+        .replace(/\*\*(.*?)\*\*/g, '$1')      // Bold
+        .replace(/\*(.*?)\*/g, '$1')          // Italic
+        .replace(/__(.*?)__/g, '$1')          // Bold underscore
+        .replace(/_(.*?)_/g, '$1')            // Italic underscore
+        .replace(/`(.*?)`/g, '$1')            // Inline code
+        .replace(/~~(.*?)~~/g, '$1')          // Strikethrough
+        .replace(/\[(.*?)\]\(.*?\)/g, '$1')   // Links
+        .replace(/&nbsp;/g, ' ')              // HTML entities
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .trim();
+    };
+    
     const checkNewPage = (spaceNeeded = 20) => {
       if (yPosition > pageHeight - spaceNeeded) {
         doc.addPage();
@@ -153,7 +174,7 @@ const ResearchApp = () => {
           checkNewPage(15);
           doc.setFontSize(12);
           doc.setFont('helvetica', 'bold');
-          const headerText = line.replace(/^###\s*/, '');
+          const headerText = stripMarkdown(line.replace(/^###\s*/, ''));
           doc.text(headerText, leftMargin, yPosition);
           yPosition += 8;
           doc.setFontSize(10);
@@ -165,7 +186,7 @@ const ResearchApp = () => {
           checkNewPage(15);
           doc.setFontSize(13);
           doc.setFont('helvetica', 'bold');
-          const headerText = line.replace(/^##\s*/, '');
+          const headerText = stripMarkdown(line.replace(/^##\s*/, ''));
           doc.text(headerText, leftMargin, yPosition);
           yPosition += 8;
           doc.setFontSize(10);
@@ -176,7 +197,7 @@ const ResearchApp = () => {
         // Bullet points (- or *)
         if (line.match(/^\s*[-*]\s+/)) {
           checkNewPage();
-          const bulletText = line.replace(/^\s*[-*]\s+/, '').replace(/\*\*(.*?)\*\*/g, '$1');
+          const bulletText = stripMarkdown(line.replace(/^\s*[-*]\s+/, ''));
           const wrappedLines = doc.splitTextToSize(bulletText, maxWidth - 10);
           
           // Draw bullet
@@ -196,7 +217,7 @@ const ResearchApp = () => {
           const match = line.match(/^\s*(\d+)\.\s+(.*)/);
           if (match) {
             const num = match[1];
-            const text = match[2].replace(/\*\*(.*?)\*\*/g, '$1');
+            const text = stripMarkdown(match[2]);
             const wrappedLines = doc.splitTextToSize(text, maxWidth - 12);
             
             wrappedLines.forEach((wrappedLine, idx) => {
@@ -229,9 +250,9 @@ const ResearchApp = () => {
           continue;
         }
         
-        // Regular text (remove markdown bold)
+        // Regular text (remove markdown)
         checkNewPage();
-        const cleanText = line.replace(/\*\*(.*?)\*\*/g, '$1');
+        const cleanText = stripMarkdown(line);
         const wrappedLines = doc.splitTextToSize(cleanText, maxWidth - (leftMargin - margin));
         wrappedLines.forEach(wrappedLine => {
           checkNewPage();
@@ -242,12 +263,12 @@ const ResearchApp = () => {
     };
     
     const renderTable = (tableLines, leftMargin) => {
-      // Parse table
+      // Parse table and strip markdown
       const rows = tableLines
         .filter(line => !line.includes('---')) // Remove separator line
         .map(line => 
           line.split('|')
-            .map(cell => cell.trim())
+            .map(cell => stripMarkdown(cell))
             .filter(cell => cell.length > 0)
         );
       
@@ -256,50 +277,85 @@ const ResearchApp = () => {
       const headers = rows[0];
       const dataRows = rows.slice(1);
       
-      // Calculate column widths
+      // Calculate column widths with better spacing
       const colCount = headers.length;
-      const colWidth = (maxWidth - (leftMargin - margin)) / colCount;
+      const totalWidth = maxWidth - (leftMargin - margin);
+      const colWidth = totalWidth / colCount;
+      const cellPadding = 2;
+      const textWidth = colWidth - (cellPadding * 2);
       
       checkNewPage(10 + (dataRows.length * 8));
       
-      // Draw header row
-      doc.setFillColor(75, 85, 99); // Grey header
-      doc.rect(leftMargin, yPosition - 5, colWidth * colCount, 7, 'F');
+      // Draw header row - calculate height needed
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       
+      const headerLines = headers.map(header => {
+        return doc.splitTextToSize(header, textWidth);
+      });
+      const headerHeight = Math.max(...headerLines.map(lines => lines.length)) * 4 + 3;
+      
+      doc.setFillColor(75, 85, 99);
+      doc.rect(leftMargin, yPosition - 3, colWidth * colCount, headerHeight, 'F');
+      
       headers.forEach((header, idx) => {
-        const text = doc.splitTextToSize(header, colWidth - 4);
-        doc.text(text[0] || '', leftMargin + (idx * colWidth) + 2, yPosition);
+        const lines = headerLines[idx];
+        lines.forEach((line, lineIdx) => {
+          doc.text(line, leftMargin + (idx * colWidth) + cellPadding, yPosition + (lineIdx * 4));
+        });
       });
       
-      yPosition += 7;
+      yPosition += headerHeight;
       doc.setTextColor(0, 0, 0);
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
       
-      // Draw data rows
+      // Draw data rows with dynamic height
+      let tableStartY = yPosition;
       dataRows.forEach((row, rowIdx) => {
-        checkNewPage(8);
+        // Ensure font is set for this row
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
         
-        // Alternating row colors
+        // Prepare all cell text and calculate row height
+        const cellLines = row.map(cell => {
+          const lines = doc.splitTextToSize(cell || '', textWidth);
+          // Ensure it returns an array
+          return Array.isArray(lines) ? lines : [cell || ''];
+        });
+        const rowHeight = Math.max(...cellLines.map(lines => lines.length)) * 4 + 3;
+        
+        checkNewPage(rowHeight + 5);
+        
+        // Ensure font is still set after potential page break
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        
+        // Draw row background
         if (rowIdx % 2 === 1) {
           doc.setFillColor(243, 244, 246);
-          doc.rect(leftMargin, yPosition - 5, colWidth * colCount, 7, 'F');
+          doc.rect(leftMargin, yPosition - 3, colWidth * colCount, rowHeight, 'F');
         }
         
+        // Draw cell content with all lines
         row.forEach((cell, colIdx) => {
-          const cellText = cell.replace(/\*\*(.*?)\*\*/g, '$1');
-          const text = doc.splitTextToSize(cellText, colWidth - 4);
-          doc.text(text[0] || '', leftMargin + (colIdx * colWidth) + 2, yPosition);
+          const lines = cellLines[colIdx];
+          let cellY = yPosition;
+          lines.forEach((line, lineIdx) => {
+            doc.text(line || '', leftMargin + (colIdx * colWidth) + cellPadding, cellY);
+            cellY += 4;
+          });
         });
         
-        yPosition += 7;
+        yPosition += rowHeight;
       });
       
       // Draw table border
+      const totalTableHeight = yPosition - tableStartY + headerHeight;
       doc.setDrawColor(200, 200, 200);
-      doc.rect(leftMargin, yPosition - (dataRows.length * 7) - 12, colWidth * colCount, (dataRows.length + 1) * 7);
+      doc.rect(leftMargin, tableStartY - headerHeight, colWidth * colCount, totalTableHeight);
       
       yPosition += 5;
     };
@@ -378,14 +434,29 @@ const ResearchApp = () => {
     
     if (tableLines.length < 2) return null;
     
-    // Parse header
-    const headers = tableLines[0].split('|').map(h => h.trim()).filter(h => h);
+    // Parse header and strip markdown and HTML
+    const stripMarkdown = (str) => {
+      return str
+        .replace(/<[^>]*>/g, '')              // HTML tags
+        .replace(/\*\*(.*?)\*\*/g, '$1')      // Bold
+        .replace(/\*(.*?)\*/g, '$1')          // Italic
+        .replace(/`(.*?)`/g, '$1')            // Code
+        .replace(/#{1,6}\s/g, '')             // Headers
+        .replace(/&nbsp;/g, ' ')              // HTML entities
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .trim();
+    };
+    
+    const headers = tableLines[0].split('|').map(h => stripMarkdown(h)).filter(h => h);
     
     // Skip separator line (index 1)
-    // Parse rows
+    // Parse rows and strip markdown
     const rows = [];
     for (let i = 2; i < tableLines.length; i++) {
-      const cells = tableLines[i].split('|').map(c => c.trim()).filter(c => c);
+      const cells = tableLines[i].split('|').map(c => stripMarkdown(c)).filter(c => c);
       if (cells.length > 0) {
         rows.push(cells);
       }
