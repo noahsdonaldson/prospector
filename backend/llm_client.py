@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import httpx
 from typing import Optional

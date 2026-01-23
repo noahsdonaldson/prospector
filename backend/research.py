@@ -1,13 +1,59 @@
+# -*- coding: utf-8 -*-
 import asyncio
+import json
+import uuid
+from datetime import datetime
 from typing import AsyncGenerator, Dict, Optional
 from llm_client import LLMClient
 from prompts import PromptTemplates
 from search_client import TavilySearchClient
+from parsers import extract_industry_from_text
 
 class ResearchOrchestrator:
     def __init__(self, tavily_api_key: Optional[str] = None):
         self.prompts = PromptTemplates()
         self.search_client = TavilySearchClient(tavily_api_key) if tavily_api_key else None
+        
+        # Metadata tracking
+        self.metadata = {
+            "research_id": str(uuid.uuid4()),
+            "start_time": None,
+            "end_time": None,
+            "total_tokens": 0,
+            "tavily_searches": 0,
+            "llm_calls": 0,
+            "retries": 0
+        }
+    
+    def _parse_json_response(self, response: str) -> dict:
+        """Parse LLM JSON response with fallback handling"""
+        try:
+            # Try to parse as pure JSON first
+            return json.loads(response)
+        except json.JSONDecodeError:
+            # Try to extract JSON from markdown code blocks
+            import re
+            json_match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
+            if json_match:
+                try:
+                    return json.loads(json_match.group(1))
+                except json.JSONDecodeError:
+                    pass
+            
+            # Try to find JSON object in the response
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                try:
+                    return json.loads(json_match.group(0))
+                except json.JSONDecodeError:
+                    pass
+            
+            # Fallback: return raw text wrapped in error structure
+            return {
+                "error": "Failed to parse JSON",
+                "raw_response": response,
+                "fallback": True
+            }
     
     async def run_full_research(
         self, 
@@ -24,14 +70,22 @@ class ResearchOrchestrator:
             "step": 1-7,
             "step_name": str,
             "data": str (result of step),
-            "progress_percent": 0-100
+            "progress_percent": 0-100,
+            "metadata": {...}
         }
         """
+        self.metadata["start_time"] = datetime.now().isoformat()
         llm = LLMClient(provider=llm_provider, api_key=api_key)
         
         results = {
+            "research_id": self.metadata["research_id"],
             "company_name": company_name,
-            "steps": {}
+            "industry": None,
+            "llm_provider": llm_provider,
+            "status": "in_progress",
+            "steps": {},
+            "failed_steps": [],
+            "errors": []
         }
         
         try:
@@ -50,13 +104,32 @@ class ResearchOrchestrator:
                 web_context = self.search_client.search_for_step(
                     company_name, "strategic objectives plans initiatives 2024 2025"
                 )
+                self.metadata["tavily_searches"] += 1
             
             step1_prompt = self.prompts.step1_master_research(company_name)
             if web_context:
                 step1_prompt = web_context + "\n\n" + step1_prompt
             
-            step1_result = await llm.call_llm(step1_prompt)
-            results["steps"]["step1_strategic_objectives"] = step1_result
+            step1_raw = await llm.call_llm(step1_prompt)
+            self.metadata["llm_calls"] += 1
+            
+            # Parse JSON response
+            step1_result = self._parse_json_response(step1_raw)
+            
+            results["steps"]["step1_strategic_objectives"] = {
+                "status": "complete",
+                "data": step1_result,
+                "raw": step1_raw
+            }
+            
+            # Try to extract industry from Step 1 JSON
+            if isinstance(step1_result, dict) and "industry" in step1_result:
+                results["industry"] = step1_result["industry"]
+            else:
+                # Fallback to text extraction if JSON parsing failed
+                industry = extract_industry_from_text(step1_raw)
+                if industry:
+                    results["industry"] = industry
             
             yield {
                 "type": "step_complete",
@@ -81,13 +154,25 @@ class ResearchOrchestrator:
                 web_context = self.search_client.search_for_step(
                     company_name, "business units divisions segments structure 2024 2025"
                 )
+                self.metadata["tavily_searches"] += 1
             
-            step2_prompt = self.prompts.step2_bu_alignment(company_name, step1_result)
+            # Pass raw string for context (not parsed JSON)
+            step1_context = step1_raw if isinstance(step1_result, dict) else str(step1_result)
+            step2_prompt = self.prompts.step2_bu_alignment(company_name, step1_context)
             if web_context:
                 step2_prompt = web_context + "\n\n" + step2_prompt
             
-            step2_result = await llm.call_llm(step2_prompt)
-            results["steps"]["step2_bu_alignment"] = step2_result
+            step2_raw = await llm.call_llm(step2_prompt)
+            self.metadata["llm_calls"] += 1
+            
+            # Parse JSON response
+            step2_result = self._parse_json_response(step2_raw)
+            
+            results["steps"]["step2_bu_alignment"] = {
+                "status": "complete",
+                "data": step2_result,
+                "raw": step2_raw
+            }
             
             yield {
                 "type": "step_complete",
@@ -124,15 +209,26 @@ class ResearchOrchestrator:
                     web_context = self.search_client.search_for_step(
                         company_name, f"{bu} business unit operations initiatives 2024 2025"
                     )
+                    self.metadata["tavily_searches"] += 1
                 
-                step3_prompt = self.prompts.step3_bu_deepdive(company_name, bu, step1_result)
+                step3_prompt = self.prompts.step3_bu_deepdive(company_name, bu, step1_context)
                 if web_context:
                     step3_prompt = web_context + "\n\n" + step3_prompt
                 
-                bu_result = await llm.call_llm(step3_prompt)
-                step3_results[bu] = bu_result
+                bu_raw = await llm.call_llm(step3_prompt)
+                self.metadata["llm_calls"] += 1
+                
+                # Parse JSON response
+                bu_parsed = self._parse_json_response(bu_raw)
+                step3_results[bu] = {
+                    "data": bu_parsed,
+                    "raw": bu_raw
+                }
             
-            results["steps"]["step3_bu_deepdive"] = step3_results
+            results["steps"]["step3_bu_deepdive"] = {
+                "status": "complete",
+                "data": step3_results
+            }
             
             yield {
                 "type": "step_complete",
@@ -157,13 +253,26 @@ class ResearchOrchestrator:
                 web_context = self.search_client.search_for_step(
                     company_name, "AI artificial intelligence machine learning initiatives 2024 2025"
                 )
+                self.metadata["tavily_searches"] += 1
             
-            step4_prompt = self.prompts.step4_ai_alignment(company_name, step1_result, step3_results)
+            # Prepare context strings for step4
+            step3_raw_contexts = {bu: data["raw"] for bu, data in step3_results.items()}
+            
+            step4_prompt = self.prompts.step4_ai_alignment(company_name, step1_context, step3_raw_contexts)
             if web_context:
                 step4_prompt = web_context + "\n\n" + step4_prompt
             
-            step4_result = await llm.call_llm(step4_prompt)
-            results["steps"]["step4_ai_alignment"] = step4_result
+            step4_raw = await llm.call_llm(step4_prompt)
+            self.metadata["llm_calls"] += 1
+            
+            # Parse JSON response
+            step4_result = self._parse_json_response(step4_raw)
+            
+            results["steps"]["step4_ai_alignment"] = {
+                "status": "complete",
+                "data": step4_result,
+                "raw": step4_raw
+            }
             
             yield {
                 "type": "step_complete",
@@ -187,18 +296,23 @@ class ResearchOrchestrator:
             web_context = ""
             if self.search_client:
                 web_context = self.search_client.search_executives_multi(company_name)
+                self.metadata["tavily_searches"] += 6  # 6 targeted executive searches
             
             step5_prompt = self.prompts.step5_persona_mapping(
-                company_name, step1_result, step3_results, step4_result
+                company_name, step1_context, step3_raw_contexts, step4_raw
             )
             if web_context:
                 step5_prompt = web_context + "\n\n" + step5_prompt
             
             # First attempt
-            step5_result = await llm.call_llm(step5_prompt)
+            step5_raw = await llm.call_llm(step5_prompt)
+            self.metadata["llm_calls"] += 1
+            
+            # Parse and validate
+            step5_result = self._parse_json_response(step5_raw)
             
             # Validate: Check if result contains TBD or lacks real names
-            if self._needs_persona_retry(step5_result):
+            if self._needs_persona_retry(step5_raw):
                 yield {
                     "type": "progress",
                     "step": 5,
@@ -221,9 +335,16 @@ class ResearchOrchestrator:
 - Review the search results carefully - names are present in the content
 - Do not proceed without finding at least 3 actual executive names"""
                 
-                step5_result = await llm.call_llm(retry_prompt)
+                step5_raw = await llm.call_llm(retry_prompt)
+                self.metadata["llm_calls"] += 1
+                self.metadata["retries"] += 1
+                step5_result = self._parse_json_response(step5_raw)
             
-            results["steps"]["step5_persona_mapping"] = step5_result
+            results["steps"]["step5_persona_mapping"] = {
+                "status": "complete",
+                "data": step5_result,
+                "raw": step5_raw
+            }
             
             yield {
                 "type": "step_complete",
@@ -242,12 +363,21 @@ class ResearchOrchestrator:
                 "progress_percent": 71
             }
             
-            step6_result = await llm.call_llm(
+            step6_raw = await llm.call_llm(
                 self.prompts.step6_value_realization(
-                    company_name, step1_result, step3_results, step4_result, step5_result
+                    company_name, step1_context, step3_raw_contexts, step4_raw, step5_raw
                 )
             )
-            results["steps"]["step6_value_realization"] = step6_result
+            self.metadata["llm_calls"] += 1
+            
+            # Parse JSON response
+            step6_result = self._parse_json_response(step6_raw)
+            
+            results["steps"]["step6_value_realization"] = {
+                "status": "complete",
+                "data": step6_result,
+                "raw": step6_raw
+            }
             
             yield {
                 "type": "step_complete",
@@ -266,12 +396,21 @@ class ResearchOrchestrator:
                 "progress_percent": 85
             }
             
-            step7_result = await llm.call_llm(
+            step7_raw = await llm.call_llm(
                 self.prompts.step7_outreach_email(
-                    company_name, step1_result, step4_result, step5_result, step6_result
+                    company_name, step1_context, step4_raw, step5_raw, step6_raw
                 )
             )
-            results["steps"]["step7_outreach_email"] = step7_result
+            self.metadata["llm_calls"] += 1
+            
+            # Parse JSON response
+            step7_result = self._parse_json_response(step7_raw)
+            
+            results["steps"]["step7_outreach_email"] = {
+                "status": "complete",
+                "data": step7_result,
+                "raw": step7_raw
+            }
             
             yield {
                 "type": "step_complete",
@@ -281,23 +420,53 @@ class ResearchOrchestrator:
                 "progress_percent": 100
             }
             
+            # Mark as complete and finalize metadata
+            results["status"] = "complete"
+            self.metadata["end_time"] = datetime.now().isoformat()
+            
+            # Calculate duration
+            if self.metadata["start_time"] and self.metadata["end_time"]:
+                start = datetime.fromisoformat(self.metadata["start_time"])
+                end = datetime.fromisoformat(self.metadata["end_time"])
+                duration = (end - start).total_seconds()
+                self.metadata["research_duration_seconds"] = int(duration)
+            
             # Final completion
             yield {
                 "type": "complete",
                 "message": f"Research complete for {company_name}",
                 "results": results,
+                "metadata": self.metadata,
                 "progress_percent": 100
             }
             
         except Exception as e:
+            results["status"] = "failed"
+            self.metadata["end_time"] = datetime.now().isoformat()
+            
             yield {
                 "type": "error",
                 "message": str(e),
+                "results": results,
+                "metadata": self.metadata,
                 "progress_percent": 0
             }
     
     def _needs_persona_retry(self, result: str) -> bool:
         """Check if persona mapping result needs retry due to missing names"""
+        # Handle JSON responses
+        try:
+            data = json.loads(result) if isinstance(result, str) else result
+            if isinstance(data, dict) and "personas" in data:
+                for persona in data["personas"]:
+                    name = persona.get("name", "").lower()
+                    if not name or "tbd" in name or name in ["", "-", "n/a", "not available", "to be determined"]:
+                        return True
+                return False
+        except:
+            pass
+        
+        # Fallback for non-JSON responses
         result_lower = result.lower()
         
         # Check for TBD or placeholder values
@@ -317,16 +486,20 @@ class ResearchOrchestrator:
         
         return False
     
-    def _extract_business_units(self, step2_result: str) -> list:
-        """Extract business unit names from markdown table"""
-        lines = step2_result.split('\n')
-        bus = []
+    def _extract_business_units(self, step2_result: dict) -> list:
+        """Extract business unit names from JSON response"""
+        if isinstance(step2_result, dict) and "business_units" in step2_result:
+            return [bu.get("name", "") for bu in step2_result["business_units"] if bu.get("name")]
         
-        for line in lines:
-            if line.strip().startswith('|') and '---' not in line:
-                parts = [p.strip() for p in line.split('|')]
-                # Skip header and empty cells
-                if len(parts) > 1 and parts[1] and parts[1] != 'Business Unit':
-                    bus.append(parts[1])
+        # Fallback for non-JSON response
+        if isinstance(step2_result, str):
+            lines = step2_result.split('\n')
+            bus = []
+            for line in lines:
+                if line.strip().startswith('|') and '---' not in line:
+                    parts = [p.strip() for p in line.split('|')]
+                    if len(parts) > 1 and parts[1] and parts[1] != 'Business Unit':
+                        bus.append(parts[1])
+            return bus[:3]
         
-        return bus[:3]  # Max 3 business units
+        return []

@@ -1,16 +1,23 @@
-# Prospector - AI Account Research Tool
+# Prospector - AI Account Research Tool with Data Persistence
 
-A containerized application that generates comprehensive 7-step account intelligence reports using LLM APIs (Claude or GPT-4) with real-time web search integration.
+A containerized application that generates comprehensive 7-step account intelligence reports using LLM APIs (Claude or GPT-4) with real-time web search integration and PostgreSQL database for tracking research history.
 
 ## 🎯 What It Does
 
 Prospector automates strategic account research for B2B sales teams. Enter a company name, and it generates:
-- Strategic objectives and initiatives
+- Strategic objectives and initiatives with **industry classification**
 - Business unit analysis
 - AI use case opportunities
 - Key decision-maker personas with names
 - Value realization mapping
 - Personalized outreach emails
+
+**New: Data Persistence**
+- All research automatically saved to PostgreSQL database
+- Track research history and staleness (last updated dates)
+- View all companies with industry categorization
+- Compare personas across reports
+- Add custom personas for targeted research
 
 Results include professionally formatted tables with markdown rendering and PDF export capabilities.
 
@@ -204,15 +211,18 @@ The tool makes 7+ LLM API calls per company (more if there are multiple business
 
 ```
 prospector/
-├── docker-compose.yml          # Orchestrates both containers
+├── docker-compose.yml          # Orchestrates all 3 containers (db, backend, frontend)
 ├── backend/
 │   ├── Dockerfile
-│   ├── requirements.txt        # Python deps (FastAPI, httpx, tavily-python)
-│   ├── main.py                 # FastAPI server with SSE streaming
-│   ├── research.py             # 7-step orchestrator with validation
+│   ├── requirements.txt        # Python deps (FastAPI, httpx, tavily, SQLAlchemy, psycopg2)
+│   ├── main.py                 # FastAPI server with SSE + database endpoints
+│   ├── research.py             # 7-step orchestrator with validation + metadata
 │   ├── llm_client.py           # LLM API client (Claude/GPT-4)
 │   ├── search_client.py        # Tavily search integration
-│   └── prompts.py              # All 7 prompt templates
+│   ├── prompts.py              # All 7 prompt templates with industry extraction
+│   ├── database.py             # SQLAlchemy models (Company, Report, Persona, Queue)
+│   ├── parsers.py              # Robust persona table parsing + industry extraction
+│   └── init.sql                # PostgreSQL schema initialization
 └── frontend/
     ├── Dockerfile
     ├── package.json            # React, Chakra UI, jsPDF
@@ -223,8 +233,32 @@ prospector/
     └── src/
         ├── index.js
         ├── index.css           # Google Fonts (Montserrat)
-        └── App.js              # React UI with markdown/PDF rendering
+        └── App.js              # React UI with auto-save to database
 ```
+
+## 🗄️ Database & API Endpoints
+
+**PostgreSQL Database** (port 5432):
+- `companies` - Company records with industry classification
+- `reports` - Research reports with all 7 steps as JSONB
+- `personas` - Extracted decision-makers (auto + manual)
+- `research_queue` - Queue for manually added persona research
+
+**API Endpoints**:
+- `POST /api/research` - Run research (streaming SSE response)
+- `POST /api/research/save` - Save completed research to database
+- `GET /api/companies` - List all companies with metadata
+- `GET /api/companies/{id}/reports` - Get research history for company
+- `GET /api/reports/{id}` - Get full report with personas
+- `POST /api/personas` - Manually add persona for research
+- `GET /api/companies/{id}/personas` - Get all personas for company
+
+**Data Tracked**:
+- Research duration, token usage, cost estimates
+- Industry vertical (Healthcare, Tech, Financial Services, etc.)
+- Last researched date for staleness detection
+- Persona source (auto-discovered vs manually added)
+- Research status (in_progress, complete, failed)
 
 ## 🛠️ Development
 
