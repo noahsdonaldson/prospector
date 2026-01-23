@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
 import { Copy, Download, Hammer, Gem, AlertTriangle } from 'lucide-react';
 import { Box, Input, Button, Select, FormControl, FormLabel, Text, Heading, Progress, Alert, AlertIcon, AlertDescription, Tabs, TabList, TabPanels, Tab, TabPanel, VStack, HStack, Container, Grid, GridItem, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, useDisclosure, Badge, Card, CardBody } from '@chakra-ui/react';
@@ -16,6 +16,7 @@ import { generatePDFFromJSON } from './PdfGenerator';
 
 const ResearchForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [companyName, setCompanyName] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [tavilyApiKey, setTavilyApiKey] = useState('');
@@ -28,6 +29,13 @@ const ResearchForm = () => {
   const [activeTab, setActiveTab] = useState('step1');
   const [similarCompanies, setSimilarCompanies] = useState([]);
   const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // Auto-populate company name if passed from navigation state
+  useEffect(() => {
+    if (location.state?.companyName) {
+      setCompanyName(location.state.companyName);
+    }
+  }, [location.state]);
 
   const steps = [
     { id: 'step1', name: '⛰️ Strategic Objectives', key: 'step1_strategic_objectives' },

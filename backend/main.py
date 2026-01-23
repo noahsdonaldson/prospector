@@ -144,12 +144,73 @@ async def save_research(request: SaveResearchRequest, db: Session = Depends(get_
                 json_data = step5_data["data"]
                 if json_data.get("personas"):
                     for persona_data in json_data["personas"]:
+                        # Check if persona already exists (by name and company_id)
+                        existing_persona = db.query(Persona).filter(
+                            Persona.company_id == company.id,
+                            Persona.name == persona_data.get("name")
+                        ).first()
+                        
+                        if existing_persona:
+                            # Update existing persona with latest data
+                            existing_persona.title = persona_data.get("title")
+                            existing_persona.role_in_decision = persona_data.get("buying_role") or persona_data.get("role_in_decision")
+                            existing_persona.pain_point = persona_data.get("pain_point")
+                            existing_persona.ai_use_case = persona_data.get("ai_use_case")
+                            existing_persona.expected_outcome = persona_data.get("expected_outcome")
+                            existing_persona.strategic_alignment = persona_data.get("strategic_alignment")
+                            existing_persona.value_hook = persona_data.get("value_hook")
+                            existing_persona.report_id = report.id
+                            existing_persona.last_researched_at = datetime.now()
+                            existing_persona.updated_at = datetime.now()
+                        else:
+                            # Create new persona
+                            persona = Persona(
+                                company_id=company.id,
+                                report_id=report.id,
+                                name=persona_data.get("name"),
+                                title=persona_data.get("title"),
+                                role_in_decision=persona_data.get("buying_role") or persona_data.get("role_in_decision"),
+                                pain_point=persona_data.get("pain_point"),
+                                ai_use_case=persona_data.get("ai_use_case"),
+                                expected_outcome=persona_data.get("expected_outcome"),
+                                strategic_alignment=persona_data.get("strategic_alignment"),
+                                value_hook=persona_data.get("value_hook"),
+                                source="auto",
+                                last_researched_at=datetime.now()
+                            )
+                            db.add(persona)
+            # Handle markdown format (legacy)
+            elif isinstance(step5_data.get("data"), str) or step5_data.get("markdown"):
+                persona_markdown = step5_data.get("markdown") or step5_data.get("data", "")
+                personas = parse_persona_table(persona_markdown)
+                
+                for persona_data in personas:
+                    # Check if persona already exists (by name and company_id)
+                    existing_persona = db.query(Persona).filter(
+                        Persona.company_id == company.id,
+                        Persona.name == persona_data.get("name")
+                    ).first()
+                    
+                    if existing_persona:
+                        # Update existing persona with latest data
+                        existing_persona.title = persona_data.get("title") or persona_data.get("persona_title")
+                        existing_persona.role_in_decision = persona_data.get("role_in_decision")
+                        existing_persona.pain_point = persona_data.get("pain_point")
+                        existing_persona.ai_use_case = persona_data.get("ai_use_case")
+                        existing_persona.expected_outcome = persona_data.get("expected_outcome")
+                        existing_persona.strategic_alignment = persona_data.get("strategic_alignment")
+                        existing_persona.value_hook = persona_data.get("value_hook")
+                        existing_persona.report_id = report.id
+                        existing_persona.last_researched_at = datetime.now()
+                        existing_persona.updated_at = datetime.now()
+                    else:
+                        # Create new persona
                         persona = Persona(
                             company_id=company.id,
                             report_id=report.id,
                             name=persona_data.get("name"),
-                            title=persona_data.get("title"),
-                            role_in_decision=persona_data.get("buying_role") or persona_data.get("role_in_decision"),
+                            title=persona_data.get("title") or persona_data.get("persona_title"),
+                            role_in_decision=persona_data.get("role_in_decision"),
                             pain_point=persona_data.get("pain_point"),
                             ai_use_case=persona_data.get("ai_use_case"),
                             expected_outcome=persona_data.get("expected_outcome"),
@@ -159,27 +220,6 @@ async def save_research(request: SaveResearchRequest, db: Session = Depends(get_
                             last_researched_at=datetime.now()
                         )
                         db.add(persona)
-            # Handle markdown format (legacy)
-            elif isinstance(step5_data.get("data"), str) or step5_data.get("markdown"):
-                persona_markdown = step5_data.get("markdown") or step5_data.get("data", "")
-                personas = parse_persona_table(persona_markdown)
-                
-                for persona_data in personas:
-                    persona = Persona(
-                        company_id=company.id,
-                        report_id=report.id,
-                        name=persona_data.get("name"),
-                        title=persona_data.get("title") or persona_data.get("persona_title"),
-                        role_in_decision=persona_data.get("role_in_decision"),
-                        pain_point=persona_data.get("pain_point"),
-                        ai_use_case=persona_data.get("ai_use_case"),
-                        expected_outcome=persona_data.get("expected_outcome"),
-                        strategic_alignment=persona_data.get("strategic_alignment"),
-                        value_hook=persona_data.get("value_hook"),
-                        source="auto",
-                        last_researched_at=datetime.now()
-                    )
-                    db.add(persona)
         
         db.commit()
         
