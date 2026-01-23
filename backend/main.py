@@ -11,6 +11,7 @@ import uuid
 from typing import AsyncGenerator, Optional, List
 from difflib import SequenceMatcher
 from research import ResearchOrchestrator
+from validation import ResearchValidator
 from database import get_db, init_db, Company, Report, Persona, ResearchQueue
 from parsers import parse_persona_table
 
@@ -50,6 +51,9 @@ class PersonaRequest(BaseModel):
     name: str
     title: str
     added_by: Optional[str] = None
+
+class ValidationRequest(BaseModel):
+    judge_api_key: str  # OpenAI API key for judge LLM
 
 @app.get("/")
 async def root():
@@ -393,6 +397,94 @@ async def add_manual_persona(request: PersonaRequest, db: Session = Depends(get_
         "title": persona.title
     }
 
+@app.post("/api/reports/{report_id}/validate")
+async def validate_report(report_id: int, request: ValidationRequest, db: Session = Depends(get_db)):
+    """Validate a research report using judge LLM (OpenAI GPT-4o) with streaming progress"""
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    # Reconstruct report data structure
+    report_data = {
+        "id": report.id,
+        "results": {
+            "company_name": report.company.name,
+            "steps": {
+                "step1_overview": report.step1_strategic_objectives,
+                "step2_business_priorities": report.step2_bu_alignment,
+                "step3_tech_stack": report.step3_bu_deepdive,
+                "step4_ai_alignment": report.step4_ai_alignment,
+                "step5_persona_mapping": report.step5_persona_mapping,
+                "step6_value_realization": report.step6_value_realization,
+                "step7_outreach": report.step7_outreach_email
+            }
+        }
+    }
+    
+    async def generate_validation():
+        try:
+            validator = ResearchValidator(judge_api_key=request.judge_api_key)
+            
+            results = report_data.get("results", {})
+            steps = results.get("steps", {})
+            
+            validation_report = {
+                "validation_timestamp": datetime.now().isoformat(),
+                "judge_model": "gpt-4o",
+                "company_name": results.get("company_name", "Unknown"),
+                "report_id": report_data.get("id"),
+                "step_validations": {},
+                "overall_score": 0,
+                "overall_status": "YELLOW",
+                "critical_issues": [],
+                "warnings": [],
+                "recommendations": []
+            }
+            
+            # Validate each step with progress updates
+            step_scores = {}
+            for step_key, step_data in steps.items():
+                if step_key not in validator.step_config:
+                    continue
+                
+                # Send step start event
+                yield f"data: {json.dumps({'type': 'step_start', 'step_key': step_key})}\n\n"
+                
+                validation = validator._validate_step(
+                    step_key=step_key,
+                    step_data=step_data,
+                    company_name=results.get("company_name")
+                )
+                
+                validation_report["step_validations"][step_key] = validation
+                step_scores[validator.step_config[step_key]["name"]] = {
+                    "score": validation["score"],
+                    "status": validation["status"]
+                }
+                
+                # Send step complete event
+                yield f"data: {json.dumps({'type': 'step_complete', 'step_key': step_key, 'score': validation['score'], 'status': validation['status']})}\n\n"
+            
+            # Overall validation
+            yield f"data: {json.dumps({'type': 'overall_start'})}\n\n"
+            overall = validator._validate_overall(step_scores, results)
+            validation_report.update({
+                "overall_score": overall["score"],
+                "overall_status": overall["status"],
+                "critical_issues": overall.get("critical_issues", []),
+                "warnings": overall.get("warnings", []),
+                "overall_assessment": overall.get("assessment", ""),
+                "recommendations": overall.get("recommendations", [])
+            })
+            
+            # Send complete event
+            yield f"data: {json.dumps({'type': 'complete', 'validation_report': validation_report})}\n\n"
+            
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(generate_validation(), media_type="text/event-stream")
+
 @app.delete("/api/reports/{report_id}")
 async def delete_report(report_id: int, db: Session = Depends(get_db)):
     """Delete a report and its associated personas"""
@@ -404,26 +496,6 @@ async def delete_report(report_id: int, db: Session = Depends(get_db)):
     db.commit()
     
     return {"message": "Report deleted successfully"}
-    
-    # Add to research queue
-    queue_item = ResearchQueue(
-        company_id=request.company_id,
-        persona_id=None,  # Will be set after commit
-        requested_by=request.added_by
-    )
-    
-    db.commit()
-    db.refresh(persona)
-    
-    queue_item.persona_id = persona.id
-    db.add(queue_item)
-    db.commit()
-    
-    return {
-        "success": True,
-        "persona_id": persona.id,
-        "queue_id": queue_item.id
-    }
 
 @app.get("/api/companies/{company_id}/personas")
 async def get_company_personas(company_id: int, db: Session = Depends(get_db)):

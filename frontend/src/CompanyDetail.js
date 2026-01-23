@@ -5,10 +5,11 @@ import {
   Tbody, Tr, Th, Td, Badge, Spinner, Alert, AlertIcon, AlertDescription,
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody,
   ModalCloseButton, Input, FormControl, FormLabel, useDisclosure, Tabs,
-  TabList, TabPanels, Tab, TabPanel, Divider, useToast
+  TabList, TabPanels, Tab, TabPanel, Divider, useToast, Progress
 } from '@chakra-ui/react';
-import { ArrowLeft, Calendar, Users, UserPlus, Download, RefreshCw, Eye, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Users, UserPlus, Download, RefreshCw, Eye, Trash2, Shield } from 'lucide-react';
 import { generatePDFFromJSON } from './PdfGenerator';
+import ValidationReport from './ValidationReport';
 import { 
   RenderStep1, 
   RenderStep2, 
@@ -24,6 +25,7 @@ const CompanyDetail = () => {
   const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
+  const { isOpen: isValidateOpen, onOpen: onValidateOpen, onClose: onValidateClose } = useDisclosure();
   const toast = useToast();
   
   const [company, setCompany] = useState(null);
@@ -31,8 +33,14 @@ const CompanyDetail = () => {
   const [personas, setPersonas] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [viewingReport, setViewingReport] = useState(null);
+  const [validationReport, setValidationReport] = useState(null);
+  const [validatingReportId, setValidatingReportId] = useState(null);
+  const [judgeApiKey, setJudgeApiKey] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [validating, setValidating] = useState(false);
+  const [validationProgress, setValidationProgress] = useState(0);
+  const [validationStep, setValidationStep] = useState('');
   
   // Add persona form
   const [newPersonaName, setNewPersonaName] = useState('');
@@ -165,6 +173,123 @@ const CompanyDetail = () => {
         duration: 5000,
         isClosable: true
       });
+    }
+  };
+
+  const handleValidateReport = async (reportId) => {
+    setValidatingReportId(reportId);
+    onValidateOpen();
+  };
+
+  const runValidation = async () => {
+    if (!judgeApiKey) {
+      toast({
+        title: "API Key Required",
+        description: "Please enter your OpenAI API key for validation",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setValidating(true);
+    setValidationProgress(0);
+    setValidationStep('🔍 Starting validation...');
+    
+    const stepIcons = {
+      'step1_overview': '🏢',
+      'step2_business_priorities': '🎯',
+      'step3_tech_stack': '💻',
+      'step4_ai_alignment': '🤖',
+      'step5_persona_mapping': '👥',
+      'step6_value_realization': '💰',
+      'step7_outreach': '📧'
+    };
+    
+    const stepNames = {
+      'step1_overview': 'Company Overview',
+      'step2_business_priorities': 'Business Priorities',
+      'step3_tech_stack': 'Technology Stack',
+      'step4_ai_alignment': 'AI Alignment',
+      'step5_persona_mapping': 'Persona Mapping',
+      'step6_value_realization': 'Business Case & ROI',
+      'step7_outreach': 'Outreach Strategy'
+    };
+    
+    try {
+      const response = await fetch(`http://localhost:8000/api/reports/${validatingReportId}/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ judge_api_key: judgeApiKey })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Validation failed');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let stepCount = 0;
+      const totalSteps = 8; // 7 steps + 1 overall
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.type === 'step_start') {
+              stepCount++;
+              const icon = stepIcons[data.step_key] || '📊';
+              const name = stepNames[data.step_key] || data.step_key;
+              setValidationStep(`${icon} Validating ${name}...`);
+              setValidationProgress(Math.round((stepCount / totalSteps) * 100));
+            } else if (data.type === 'step_complete') {
+              const icon = stepIcons[data.step_key] || '📊';
+              const name = stepNames[data.step_key] || data.step_key;
+              const status = data.status === 'GREEN' ? '✅' : data.status === 'YELLOW' ? '⚠️' : '❌';
+              setValidationStep(`${status} ${icon} ${name}: ${data.score}/100`);
+            } else if (data.type === 'overall_start') {
+              setValidationStep('🔬 Computing overall assessment...');
+              setValidationProgress(95);
+            } else if (data.type === 'complete') {
+              setValidationReport(data.validation_report);
+              setValidationProgress(100);
+              setValidationStep('✅ Validation complete!');
+              
+              toast({
+                title: "Validation Complete",
+                description: `Overall Score: ${data.validation_report.overall_score}/100 (${data.validation_report.overall_status})`,
+                status: data.validation_report.overall_status === 'GREEN' ? 'success' : data.validation_report.overall_status === 'YELLOW' ? 'warning' : 'error',
+                duration: 5000,
+                isClosable: true,
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+      toast({
+        title: "Validation Error",
+        description: error.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      setValidationStep('');
+      setValidationProgress(0);
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -337,6 +462,14 @@ const CompanyDetail = () => {
                             </HStack>
                           </VStack>
                           <HStack>
+                            <Button
+                              size="sm"
+                              colorScheme="purple"
+                              leftIcon={<Shield size={16} />}
+                              onClick={() => handleValidateReport(report.id)}
+                            >
+                              Validate
+                            </Button>
                             <Button
                               size="sm"
                               colorScheme="blue"
@@ -575,6 +708,118 @@ const CompanyDetail = () => {
               Download PDF
             </Button>
             <Button variant="ghost" onClick={onViewClose}>
+              Close
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Validation Modal */}
+      <Modal isOpen={isValidateOpen} onClose={onValidateClose} size="6xl" closeOnOverlayClick={!validating}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            <HStack>
+              <Shield size={24} color="#9333ea" />
+              <Text>Research Quality Validation</Text>
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton isDisabled={validating} />
+          <ModalBody>
+            {validating ? (
+              <VStack spacing={4} align="stretch" py={6}>
+                <Box textAlign="center">
+                  <Heading size="md" mb={2}>{validationStep}</Heading>
+                  <Progress 
+                    value={validationProgress} 
+                    size="lg" 
+                    colorScheme="purple" 
+                    borderRadius="full"
+                    hasStripe
+                    isAnimated
+                  />
+                  <Text fontSize="sm" color="gray.600" mt={2}>
+                    {validationProgress}% Complete
+                  </Text>
+                </Box>
+                <Alert status="info" variant="left-accent">
+                  <AlertIcon />
+                  <Box>
+                    <Text fontSize="sm">
+                      Using GPT-4o to independently validate research quality, citations, and consistency.
+                      This takes about 1-2 minutes.
+                    </Text>
+                  </Box>
+                </Alert>
+              </VStack>
+            ) : !validationReport ? (
+              <VStack spacing={4} align="stretch">
+                <Alert status="info">
+                  <AlertIcon />
+                  <Box>
+                    <Text fontWeight="600">Judge LLM Validation</Text>
+                    <Text fontSize="sm">
+                      This uses OpenAI GPT-4o to independently validate your research for accuracy,
+                      citation quality, and consistency.
+                    </Text>
+                  </Box>
+                </Alert>
+                
+                <FormControl isRequired>
+                  <FormLabel>OpenAI API Key</FormLabel>
+                  <Input
+                    type="password"
+                    placeholder="sk-..."
+                    value={judgeApiKey}
+                    onChange={(e) => setJudgeApiKey(e.target.value)}
+                  />
+                  <Text fontSize="xs" color="gray.600" mt={1}>
+                    Your API key is only used for this validation and is not stored.
+                  </Text>
+                </FormControl>
+
+                <Button
+                  colorScheme="purple"
+                  onClick={runValidation}
+                  isDisabled={!judgeApiKey}
+                  size="lg"
+                >
+                  Run Validation
+                </Button>
+              </VStack>
+            ) : (
+              <ValidationReport validation={validationReport} />
+            )}
+          </ModalBody>
+          <ModalFooter>
+            {validationReport && !validating && (
+              <Button
+                colorScheme="purple"
+                variant="outline"
+                mr={3}
+                onClick={() => {
+                  setValidationReport(null);
+                  setJudgeApiKey('');
+                  setValidationProgress(0);
+                  setValidationStep('');
+                }}
+              >
+                Run Again
+              </Button>
+            )}
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                if (!validating) {
+                  onValidateClose();
+                  setValidationReport(null);
+                  setJudgeApiKey('');
+                  setValidationProgress(0);
+                  setValidationStep('');
+                }
+              }}
+              isDisabled={validating}
+            >
               Close
             </Button>
           </ModalFooter>
