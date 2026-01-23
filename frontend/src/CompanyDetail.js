@@ -172,6 +172,8 @@ const CompanyDetail = () => {
     try {
       const response = await fetch(`http://localhost:8000/api/reports/${reportId}`);
       const reportDetails = await response.json();
+      // Ensure company name is available in the report data
+      reportDetails.company_name = reportDetails.company_name || company?.name || 'Company';
       generatePDFFromJSON(reportDetails);
     } catch (err) {
       toast({
@@ -545,7 +547,8 @@ const CompanyDetail = () => {
               mr={3}
               leftIcon={<Download size={16} />}
               onClick={() => {
-                generatePDFFromJSON(viewingReport);
+                const reportWithCompany = { ...viewingReport, company_name: viewingReport.company_name || company?.name || 'Company' };
+                generatePDFFromJSON(reportWithCompany);
               }}
             >
               Download PDF

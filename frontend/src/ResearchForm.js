@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
-import { Copy, Download, Hammer, Gem } from 'lucide-react';
-import { Box, Input, Button, Select, FormControl, FormLabel, Text, Heading, Progress, Alert, AlertIcon, AlertDescription, Tabs, TabList, TabPanels, Tab, TabPanel, VStack, HStack, Container, Grid, GridItem } from '@chakra-ui/react';
+import { Copy, Download, Hammer, Gem, AlertTriangle } from 'lucide-react';
+import { Box, Input, Button, Select, FormControl, FormLabel, Text, Heading, Progress, Alert, AlertIcon, AlertDescription, Tabs, TabList, TabPanels, Tab, TabPanel, VStack, HStack, Container, Grid, GridItem, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, useDisclosure, Badge, Card, CardBody } from '@chakra-ui/react';
 import { 
   RenderStep1, 
   RenderStep2, 
@@ -14,6 +15,7 @@ import {
 import { generatePDFFromJSON } from './PdfGenerator';
 
 const ResearchForm = () => {
+  const navigate = useNavigate();
   const [companyName, setCompanyName] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [tavilyApiKey, setTavilyApiKey] = useState('');
@@ -24,6 +26,8 @@ const ResearchForm = () => {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('step1');
+  const [similarCompanies, setSimilarCompanies] = useState([]);
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const steps = [
     { id: 'step1', name: '⛰️ Strategic Objectives', key: 'step1_strategic_objectives' },
@@ -56,6 +60,38 @@ const ResearchForm = () => {
     return '🏆';
   };
 
+  const checkForSimilarCompanies = async () => {
+    if (!companyName.trim()) {
+      setError('Please enter a company name');
+      return false;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/companies/fuzzy-match?name=${encodeURIComponent(companyName)}&threshold=0.6`);
+      const data = await response.json();
+      
+      if (data.matches && data.matches.length > 0) {
+        setSimilarCompanies(data.matches);
+        onOpen(); // Show modal with matches
+        return true; // Has matches
+      }
+      return false; // No matches, proceed
+    } catch (err) {
+      console.error('Error checking for similar companies:', err);
+      return false; // On error, proceed anyway
+    }
+  };
+
+  const handleStartResearch = async () => {
+    // First check for similar companies
+    const hasMatches = await checkForSimilarCompanies();
+    if (hasMatches) {
+      return; // Modal is open, user will decide
+    }
+    // No matches, proceed directly
+    await startResearch();
+  };
+
   const startResearch = async () => {
     if (!companyName.trim()) {
       setError('Please enter a company name');
@@ -66,6 +102,7 @@ const ResearchForm = () => {
       return;
     }
 
+    onClose(); // Close modal if open
     setIsResearching(true);
     setProgress(0);
     setCurrentStep('Starting research...');
@@ -537,7 +574,7 @@ const ResearchForm = () => {
               </FormControl>
 
               <Button
-                onClick={startResearch}
+                onClick={handleStartResearch}
                 isDisabled={isResearching}
                 size="lg"
                 w="full"
@@ -691,6 +728,75 @@ const ResearchForm = () => {
           </Box>
         </Box>
       </Container>
+
+      {/* Similar Companies Modal */}
+      <Modal isOpen={isOpen} onClose={onClose} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            <HStack spacing={2}>
+              <AlertTriangle size={24} color="#F59E0B" />
+              <Text>Similar Companies Found</Text>
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing={4}>
+              <Alert status="info" variant="left-accent">
+                <AlertIcon />
+                <AlertDescription>
+                  We found {similarCompanies.length} similar {similarCompanies.length === 1 ? 'company' : 'companies'} in the database. 
+                  Would you like to use existing research or start fresh?
+                </AlertDescription>
+              </Alert>
+
+              {similarCompanies.map((company) => (
+                <Card key={company.id} borderWidth={2} borderColor="gray.200">
+                  <CardBody>
+                    <VStack align="stretch" spacing={2}>
+                      <HStack justify="space-between">
+                        <Text fontWeight="bold" fontSize="lg">{company.name}</Text>
+                        <Badge colorScheme="green" fontSize="sm">
+                          {company.similarity}% match
+                        </Badge>
+                      </HStack>
+                      <HStack spacing={4} fontSize="sm" color="gray.600">
+                        <Text>📊 {company.report_count} {company.report_count === 1 ? 'report' : 'reports'}</Text>
+                        {company.latest_research && (
+                          <Text>📅 Last: {new Date(company.latest_research).toLocaleDateString()}</Text>
+                        )}
+                      </HStack>
+                      <Button
+                        size="sm"
+                        colorScheme="blue"
+                        variant="outline"
+                        onClick={() => {
+                          navigate(`/company/${company.id}`);
+                        }}
+                      >
+                        View Existing Research
+                      </Button>
+                    </VStack>
+                  </CardBody>
+                </Card>
+              ))}
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <HStack spacing={3}>
+              <Button variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                colorScheme="blue"
+                onClick={startResearch}
+              >
+                Continue with New Research
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };

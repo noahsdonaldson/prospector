@@ -641,5 +641,7 @@ export const generatePDFFromJSON = (results) => {
   }
   
   // Save the PDF
-  doc.save(`${results.company_name}_research.pdf`);
+  const companyName = results.company_name || 'Company';
+  const sanitizedName = companyName.replace(/[^a-z0-9]/gi, '_');
+  doc.save(`${sanitizedName}_research.pdf`);
 };

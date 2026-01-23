@@ -9,6 +9,7 @@ import asyncio
 import json
 import uuid
 from typing import AsyncGenerator, Optional, List
+from difflib import SequenceMatcher
 from research import ResearchOrchestrator
 from database import get_db, init_db, Company, Report, Persona, ResearchQueue
 from parsers import parse_persona_table
@@ -137,25 +138,48 @@ async def save_research(request: SaveResearchRequest, db: Session = Depends(get_
         # Parse and save personas from Step 5
         if steps.get("step5_persona_mapping"):
             step5_data = steps["step5_persona_mapping"]
-            persona_markdown = step5_data.get("markdown") or step5_data.get("data", "")
-            personas = parse_persona_table(persona_markdown)
             
-            for persona_data in personas:
-                persona = Persona(
-                    company_id=company.id,
-                    report_id=report.id,
-                    name=persona_data.get("name"),
-                    title=persona_data.get("title") or persona_data.get("persona_title"),
-                    role_in_decision=persona_data.get("role_in_decision"),
-                    pain_point=persona_data.get("pain_point"),
-                    ai_use_case=persona_data.get("ai_use_case"),
-                    expected_outcome=persona_data.get("expected_outcome"),
-                    strategic_alignment=persona_data.get("strategic_alignment"),
-                    value_hook=persona_data.get("value_hook"),
-                    source="auto",
-                    last_researched_at=datetime.now()
-                )
-                db.add(persona)
+            # Handle JSON format (new)
+            if isinstance(step5_data.get("data"), dict):
+                json_data = step5_data["data"]
+                if json_data.get("personas"):
+                    for persona_data in json_data["personas"]:
+                        persona = Persona(
+                            company_id=company.id,
+                            report_id=report.id,
+                            name=persona_data.get("name"),
+                            title=persona_data.get("title"),
+                            role_in_decision=persona_data.get("buying_role") or persona_data.get("role_in_decision"),
+                            pain_point=persona_data.get("pain_point"),
+                            ai_use_case=persona_data.get("ai_use_case"),
+                            expected_outcome=persona_data.get("expected_outcome"),
+                            strategic_alignment=persona_data.get("strategic_alignment"),
+                            value_hook=persona_data.get("value_hook"),
+                            source="auto",
+                            last_researched_at=datetime.now()
+                        )
+                        db.add(persona)
+            # Handle markdown format (legacy)
+            elif isinstance(step5_data.get("data"), str) or step5_data.get("markdown"):
+                persona_markdown = step5_data.get("markdown") or step5_data.get("data", "")
+                personas = parse_persona_table(persona_markdown)
+                
+                for persona_data in personas:
+                    persona = Persona(
+                        company_id=company.id,
+                        report_id=report.id,
+                        name=persona_data.get("name"),
+                        title=persona_data.get("title") or persona_data.get("persona_title"),
+                        role_in_decision=persona_data.get("role_in_decision"),
+                        pain_point=persona_data.get("pain_point"),
+                        ai_use_case=persona_data.get("ai_use_case"),
+                        expected_outcome=persona_data.get("expected_outcome"),
+                        strategic_alignment=persona_data.get("strategic_alignment"),
+                        value_hook=persona_data.get("value_hook"),
+                        source="auto",
+                        last_researched_at=datetime.now()
+                    )
+                    db.add(persona)
         
         db.commit()
         
@@ -169,6 +193,37 @@ async def save_research(request: SaveResearchRequest, db: Session = Depends(get_
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/companies/fuzzy-match")
+async def fuzzy_match_company(name: str, threshold: float = 0.6, db: Session = Depends(get_db)):
+    """Find companies with similar names using fuzzy matching"""
+    if not name or not name.strip():
+        return {"matches": []}
+    
+    companies = db.query(Company).all()
+    matches = []
+    
+    for company in companies:
+        # Calculate similarity ratio (0.0 to 1.0)
+        ratio = SequenceMatcher(None, name.lower().strip(), company.name.lower().strip()).ratio()
+        
+        if ratio >= threshold:
+            # Get latest report for this company
+            latest_report = db.query(Report).filter(Report.company_id == company.id).order_by(Report.created_at.desc()).first()
+            
+            matches.append({
+                "id": company.id,
+                "name": company.name,
+                "similarity": round(ratio * 100, 1),  # Convert to percentage
+                "has_reports": latest_report is not None,
+                "latest_research": latest_report.created_at.isoformat() if latest_report else None,
+                "report_count": db.query(Report).filter(Report.company_id == company.id).count()
+            })
+    
+    # Sort by similarity score (highest first)
+    matches.sort(key=lambda x: x["similarity"], reverse=True)
+    
+    return {"matches": matches}
 
 @app.get("/api/companies")
 async def get_companies(db: Session = Depends(get_db)):
