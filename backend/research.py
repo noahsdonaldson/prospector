@@ -183,11 +183,10 @@ class ResearchOrchestrator:
             }
             
             # Get recent web data for executive names if search is available
+            # Use multiple targeted searches for better executive name discovery
             web_context = ""
             if self.search_client:
-                web_context = self.search_client.search_for_step(
-                    company_name, "executives leadership management team names titles 2024 2025"
-                )
+                web_context = self.search_client.search_executives_multi(company_name)
             
             step5_prompt = self.prompts.step5_persona_mapping(
                 company_name, step1_result, step3_results, step4_result
@@ -195,7 +194,35 @@ class ResearchOrchestrator:
             if web_context:
                 step5_prompt = web_context + "\n\n" + step5_prompt
             
+            # First attempt
             step5_result = await llm.call_llm(step5_prompt)
+            
+            # Validate: Check if result contains TBD or lacks real names
+            if self._needs_persona_retry(step5_result):
+                yield {
+                    "type": "progress",
+                    "step": 5,
+                    "step_name": "Persona Mapping",
+                    "message": "Refining executive search...",
+                    "progress_percent": 62
+                }
+                
+                # Retry with stronger prompt
+                retry_prompt = f"""CRITICAL RETRY: The previous attempt failed to find actual executive names.
+
+{web_context}
+
+{step5_prompt}
+
+⚠️ MANDATORY REQUIREMENTS:
+- You MUST find actual executive names from the search results above
+- "TBD" is NOT acceptable - use the web search results provided
+- If a name is in the search results, you MUST use it
+- Review the search results carefully - names are present in the content
+- Do not proceed without finding at least 3 actual executive names"""
+                
+                step5_result = await llm.call_llm(retry_prompt)
+            
             results["steps"]["step5_persona_mapping"] = step5_result
             
             yield {
@@ -268,6 +295,27 @@ class ResearchOrchestrator:
                 "message": str(e),
                 "progress_percent": 0
             }
+    
+    def _needs_persona_retry(self, result: str) -> bool:
+        """Check if persona mapping result needs retry due to missing names"""
+        result_lower = result.lower()
+        
+        # Check for TBD or placeholder values
+        if "tbd" in result_lower or "to be determined" in result_lower:
+            return True
+        
+        # Check if table has empty name cells or generic placeholders
+        lines = result.split('\n')
+        for line in lines:
+            if '|' in line and not line.strip().startswith('#'):
+                cells = [c.strip() for c in line.split('|')]
+                if len(cells) > 1:
+                    # First cell should be name
+                    name_cell = cells[1] if len(cells) > 1 else ""
+                    if not name_cell or name_cell in ["", "-", "N/A", "Not Available"]:
+                        return True
+        
+        return False
     
     def _extract_business_units(self, step2_result: str) -> list:
         """Extract business unit names from markdown table"""

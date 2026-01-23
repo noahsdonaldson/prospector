@@ -77,3 +77,49 @@ class TavilySearchClient:
         # Build query that prioritizes recent information
         query = f"{company_name} {step_focus} 2024 2025 2026"
         return self.search(query, max_results=5)
+    
+    def search_executives_multi(self, company_name: str, roles: list = None) -> str:
+        """
+        Perform multiple targeted searches for specific executive roles
+        
+        Args:
+            company_name: Name of the company being researched
+            roles: List of specific roles to search for (e.g., ["CFO", "CTO", "CRO"])
+            
+        Returns:
+            Combined formatted search results from all role searches
+        """
+        if not roles:
+            roles = ["CFO Chief Financial Officer", "CTO Chief Technology Officer", 
+                    "COO Chief Operating Officer", "CRO Chief Risk Officer",
+                    "CDO Chief Data Officer", "CISO Chief Information Security Officer"]
+        
+        all_results = ["=== EXECUTIVE SEARCH RESULTS (MULTIPLE TARGETED QUERIES) ===\n"]
+        
+        for role in roles:
+            query = f"{company_name} {role} name current 2024 2025"
+            try:
+                response = self.client.search(
+                    query=query,
+                    search_depth="advanced",
+                    max_results=3,
+                    include_domains=[],
+                    exclude_domains=[]
+                )
+                
+                if response and 'results' in response and response['results']:
+                    all_results.append(f"\n--- Search for {role} ---")
+                    for idx, result in enumerate(response['results'][:2], 1):  # Top 2 per role
+                        title = result.get('title', 'No title')
+                        url = result.get('url', 'No URL')
+                        content = result.get('content', 'No content available')
+                        
+                        all_results.append(f"{idx}. {title}")
+                        all_results.append(f"   URL: {url}")
+                        all_results.append(f"   Content: {content}")
+                        all_results.append("")
+            except Exception as e:
+                all_results.append(f"\n--- Search for {role} failed: {str(e)} ---\n")
+        
+        all_results.append("\n=== END OF EXECUTIVE SEARCH RESULTS ===\n")
+        return "\n".join(all_results)
