@@ -46,7 +46,7 @@ class Report(Base):
     step1_strategic_objectives = Column(JSONB)
     step2_bu_alignment = Column(JSONB)
     step3_bu_deepdive = Column(JSONB)
-    step4_transformation_roadmap = Column(JSONB)
+    step4_ai_alignment = Column(JSONB)
     step5_persona_mapping = Column(JSONB)
     step6_value_realization = Column(JSONB)
     step7_outreach_email = Column(JSONB)

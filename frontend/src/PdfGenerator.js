@@ -50,13 +50,70 @@ export const generatePDFFromJSON = (results) => {
     });
   };
   
+  // Color definitions matching Chakra UI theme
+  const colors = {
+    green: { bg: [240, 253, 244], border: [74, 222, 128], text: [22, 101, 52] },
+    blue: { bg: [239, 246, 255], border: [96, 165, 250], text: [30, 64, 175] },
+    purple: { bg: [250, 245, 255], border: [192, 132, 252], text: [107, 33, 168] },
+    orange: { bg: [255, 247, 237], border: [251, 146, 60], text: [154, 52, 18] },
+    yellow: { bg: [254, 252, 232], border: [250, 204, 21], text: [161, 98, 7] },
+    red: { bg: [254, 242, 242], border: [248, 113, 113], text: [153, 27, 27] },
+    gray: { bg: [249, 250, 251], border: [209, 213, 219], text: [55, 65, 81] }
+  };
+  
+  const addColoredBox = (text, colorScheme = 'gray', options = {}) => {
+    checkNewPage(15);
+    const color = colors[colorScheme] || colors.gray;
+    const boxPadding = 3;
+    const lines = doc.splitTextToSize(text, maxWidth - (2 * boxPadding));
+    const boxHeight = (lines.length * 5) + (2 * boxPadding);
+    
+    // Background
+    doc.setFillColor(...color.bg);
+    doc.rect(margin, yPosition - boxPadding, maxWidth, boxHeight, 'F');
+    
+    // Border
+    if (options.border) {
+      doc.setDrawColor(...color.border);
+      doc.setLineWidth(0.5);
+      doc.rect(margin, yPosition - boxPadding, maxWidth, boxHeight);
+    }
+    
+    // Text
+    doc.setTextColor(...color.text);
+    if (options.bold) doc.setFont('helvetica', 'bold');
+    lines.forEach((line) => {
+      doc.text(line, margin + boxPadding, yPosition);
+      yPosition += 5;
+    });
+    
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    yPosition += boxPadding + 2;
+  };
+  
+  const addBadge = (text, colorScheme = 'gray') => {
+    const color = colors[colorScheme] || colors.gray;
+    doc.setFillColor(...color.bg);
+    doc.setDrawColor(...color.border);
+    doc.setLineWidth(0.3);
+    const badgeWidth = doc.getTextWidth(text) + 4;
+    doc.roundedRect(margin, yPosition - 4, badgeWidth, 5, 1, 1, 'FD');
+    doc.setFontSize(8);
+    doc.setTextColor(...color.text);
+    doc.text(text, margin + 2, yPosition - 1);
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    return badgeWidth + 2;
+  };
+  
   const addTable = (headers, rows) => {
     checkNewPage(20);
     const colCount = headers.length;
     const colWidth = maxWidth / colCount;
     
     // Header
-    doc.setFillColor(75, 85, 99);
+    doc.setFillColor(55, 65, 81); // gray.700
     doc.rect(margin, yPosition - 5, maxWidth, 8, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
@@ -76,7 +133,7 @@ export const generatePDFFromJSON = (results) => {
       const rowHeight = 6;
       
       if (rowIdx % 2 === 1) {
-        doc.setFillColor(243, 244, 246);
+        doc.setFillColor(249, 250, 251); // gray.50
         doc.rect(margin, yPosition - 4, maxWidth, rowHeight, 'F');
       }
       
@@ -204,36 +261,363 @@ export const generatePDFFromJSON = (results) => {
   
   // Step 5: Persona Mapping
   const step5 = results.steps.step5_persona_mapping?.data;
-  if (step5 && typeof step5 === 'object' && !step5.error && step5.personas) {
-    addHeading('Target Personas', 1);
+  if (step5 && typeof step5 === 'object' && !step5.error) {
+    addHeading('Buying Committee & Stakeholder Map', 1);
     
-    const headers = ['Name', 'Title', 'Pain Point', 'Expected Outcome'];
-    const rows = step5.personas.map(p => [
-      p.name || '',
-      p.title || '',
-      p.pain_point || '',
-      p.expected_outcome || ''
-    ]);
+    if (step5.buying_committee_summary) {
+      addColoredBox(step5.buying_committee_summary, 'purple', { border: true, bold: false });
+      yPosition += 3;
+    }
     
-    addTable(headers, rows);
-    yPosition += 10;
+    if (step5.personas && step5.personas.length > 0) {
+      step5.personas.forEach((persona) => {
+        checkNewPage(40);
+        
+        // Name and Title
+        addHeading(`${persona.name}`, 2);
+        doc.setFontSize(10);
+        doc.setTextColor(107, 114, 128); // gray.600
+        addText(persona.title, 2);
+        doc.setTextColor(0, 0, 0);
+        yPosition += 2;
+        
+        // Badges
+        let xOffset = margin + 2;
+        if (persona.outreach_priority) {
+          const priorityColor = persona.outreach_priority <= 2 ? 'red' : persona.outreach_priority === 3 ? 'orange' : 'gray';
+          const priorityText = `Priority: ${persona.outreach_priority}`;
+          doc.setFillColor(...colors[priorityColor].bg);
+          doc.setDrawColor(...colors[priorityColor].border);
+          const badgeWidth = doc.getTextWidth(priorityText) + 4;
+          doc.roundedRect(xOffset, yPosition - 4, badgeWidth, 5, 1, 1, 'FD');
+          doc.setFontSize(8);
+          doc.setTextColor(...colors[priorityColor].text);
+          doc.text(priorityText, xOffset + 2, yPosition - 1);
+          xOffset += badgeWidth + 3;
+        }
+        if (persona.buying_role) {
+          doc.setFillColor(...colors.purple.bg);
+          doc.setDrawColor(...colors.purple.border);
+          const badgeWidth = doc.getTextWidth(persona.buying_role) + 4;
+          doc.roundedRect(xOffset, yPosition - 4, badgeWidth, 5, 1, 1, 'FD');
+          doc.setTextColor(...colors.purple.text);
+          doc.text(persona.buying_role, xOffset + 2, yPosition - 1);
+          xOffset += badgeWidth + 3;
+        }
+        if (persona.decision_authority) {
+          doc.setFillColor(...colors.green.bg);
+          doc.setDrawColor(...colors.green.border);
+          const badgeWidth = doc.getTextWidth(persona.decision_authority) + 4;
+          doc.roundedRect(xOffset, yPosition - 4, badgeWidth, 5, 1, 1, 'FD');
+          doc.setTextColor(...colors.green.text);
+          doc.text(persona.decision_authority, xOffset + 2, yPosition - 1);
+        }
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        yPosition += 5;
+        
+        if (persona.reports_to) {
+          doc.setFontSize(9);
+          doc.setTextColor(156, 163, 175);
+          addText(`Reports to: ${persona.reports_to}`, 2);
+          doc.setFontSize(10);
+          doc.setTextColor(0, 0, 0);
+        }
+        
+        yPosition += 2;
+        doc.setFont('helvetica', 'bold');
+        addText('Pain Point:', 2);
+        doc.setFont('helvetica', 'normal');
+        addText(persona.pain_point, 2);
+        
+        yPosition += 1;
+        doc.setFont('helvetica', 'bold');
+        addText('AI Solution:', 2);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(29, 78, 216); // blue.700
+        addText(persona.ai_use_case, 2);
+        doc.setTextColor(0, 0, 0);
+        
+        yPosition += 1;
+        doc.setFont('helvetica', 'bold');
+        addText('Expected Outcome:', 2);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(22, 163, 74); // green.600
+        doc.setFont('helvetica', 'bold');
+        addText(persona.expected_outcome, 2);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        
+        if (persona.engagement_approach) {
+          yPosition += 2;
+          addColoredBox(`Engagement Approach: ${persona.engagement_approach}`, 'blue', { border: false });
+        }
+        if (persona.potential_barriers) {
+          yPosition += 1;
+          addColoredBox(`Potential Barriers: ${persona.potential_barriers}`, 'orange', { border: false });
+        }
+        if (persona.value_hook) {
+          yPosition += 1;
+          const boxPadding = 3;
+          const lines = doc.splitTextToSize(`"${persona.value_hook}"`, maxWidth - (2 * boxPadding));
+          const boxHeight = (lines.length * 5) + (2 * boxPadding) + 5;
+          
+          doc.setFillColor(...colors.green.bg);
+          doc.rect(margin, yPosition - boxPadding, maxWidth, boxHeight, 'F');
+          doc.setDrawColor(...colors.green.border);
+          doc.setLineWidth(2);
+          doc.line(margin, yPosition - boxPadding, margin, yPosition - boxPadding + boxHeight);
+          
+          doc.setTextColor(...colors.green.text);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Value Hook:', margin + boxPadding, yPosition);
+          yPosition += 5;
+          doc.setFont('helvetica', 'italic');
+          lines.forEach((line) => {
+            doc.text(line, margin + boxPadding, yPosition);
+            yPosition += 5;
+          });
+          
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          yPosition += boxPadding + 2;
+        }
+        
+        yPosition += 5;
+      });
+    }
+    
+    yPosition += 5;
   }
   
-  // Step 6: Value Realization
+  // Step 6: Value Realization (Business Case)
   const step6 = results.steps.step6_value_realization?.data;
-  if (step6 && typeof step6 === 'object' && !step6.error && step6.value_realizations) {
-    addHeading('Value Realization Matrix', 1);
+  if (step6 && typeof step6 === 'object' && !step6.error) {
+    addHeading('Business Case & ROI Analysis', 1);
     
-    const headers = ['Executive', 'Title', 'AI Solution', 'Expected Outcome'];
-    const rows = step6.value_realizations.map(v => [
-      v.name || '',
-      v.title || '',
-      v.ai_use_case || '',
-      v.expected_outcome || ''
-    ]);
+    if (step6.executive_summary) {
+      const boxPadding = 4;
+      const lines = doc.splitTextToSize(step6.executive_summary, maxWidth - (2 * boxPadding));
+      const boxHeight = (lines.length * 5) + (2 * boxPadding) + 8;
+      
+      checkNewPage(boxHeight + 5);
+      doc.setFillColor(...colors.green.bg);
+      doc.rect(margin, yPosition - boxPadding, maxWidth, boxHeight, 'F');
+      doc.setDrawColor(...colors.green.border);
+      doc.setLineWidth(1);
+      doc.rect(margin, yPosition - boxPadding, maxWidth, boxHeight);
+      
+      doc.setTextColor(...colors.green.text);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('Executive Summary', margin + boxPadding, yPosition);
+      yPosition += 6;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      lines.forEach((line) => {
+        doc.text(line, margin + boxPadding, yPosition);
+        yPosition += 5;
+      });
+      
+      doc.setTextColor(0, 0, 0);
+      yPosition += boxPadding + 5;
+    }
     
-    addTable(headers, rows);
-    yPosition += 10;
+    if (step6.value_realizations && step6.value_realizations.length > 0) {
+      step6.value_realizations.forEach((value) => {
+        checkNewPage(50);
+        
+        addHeading(value.use_case_name, 2);
+        
+        if (value.business_unit || value.executive_sponsor) {
+          let xOffset = margin + 2;
+          if (value.business_unit) {
+            doc.setFillColor(...colors.blue.bg);
+            doc.setDrawColor(...colors.blue.border);
+            const badgeWidth = doc.getTextWidth(value.business_unit) + 4;
+            doc.roundedRect(xOffset, yPosition - 4, badgeWidth, 5, 1, 1, 'FD');
+            doc.setFontSize(8);
+            doc.setTextColor(...colors.blue.text);
+            doc.text(value.business_unit, xOffset + 2, yPosition - 1);
+            xOffset += badgeWidth + 3;
+          }
+          doc.setFontSize(10);
+          doc.setTextColor(0, 0, 0);
+          yPosition += 3;
+          
+          if (value.executive_sponsor) {
+            doc.setFontSize(9);
+            doc.setTextColor(107, 114, 128);
+            addText(`Executive Sponsor: ${value.executive_sponsor}`, 2);
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+          }
+        }
+        
+        yPosition += 2;
+        if (value.problem_statement) {
+          doc.setTextColor(185, 28, 28); // red.700
+          doc.setFont('helvetica', 'bold');
+          addText('Problem:', 2);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          addText(value.problem_statement, 2);
+        }
+        if (value.solution_overview) {
+          yPosition += 1;
+          doc.setTextColor(29, 78, 216); // blue.700
+          doc.setFont('helvetica', 'bold');
+          addText('Solution:', 2);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          addText(value.solution_overview, 2);
+        }
+        
+        if (value.financial_impact) {
+          yPosition += 3;
+          const boxPadding = 3;
+          let boxContent = '💰 Financial Impact\n';
+          if (value.financial_impact.annual_cost_savings) 
+            boxContent += `• Cost Savings: ${value.financial_impact.annual_cost_savings}\n`;
+          if (value.financial_impact.revenue_opportunity) 
+            boxContent += `• Revenue: ${value.financial_impact.revenue_opportunity}\n`;
+          if (value.financial_impact.efficiency_gains) 
+            boxContent += `• Efficiency: ${value.financial_impact.efficiency_gains}\n`;
+          if (value.financial_impact.payback_period) 
+            boxContent += `• Payback: ${value.financial_impact.payback_period}\n`;
+          if (value.financial_impact["3_year_roi"]) 
+            boxContent += `• 3-Year ROI: ${value.financial_impact["3_year_roi"]}`;
+          
+          const lines = doc.splitTextToSize(boxContent, maxWidth - (2 * boxPadding));
+          const boxHeight = (lines.length * 5) + (2 * boxPadding);
+          
+          checkNewPage(boxHeight + 5);
+          doc.setFillColor(...colors.green.bg);
+          doc.rect(margin, yPosition - boxPadding, maxWidth, boxHeight, 'F');
+          
+          doc.setTextColor(...colors.green.text);
+          doc.setFont('helvetica', 'bold');
+          doc.text('💰 Financial Impact', margin + boxPadding, yPosition);
+          yPosition += 5;
+          doc.setFont('helvetica', 'normal');
+          
+          if (value.financial_impact.annual_cost_savings) {
+            addBulletPoint(`Cost Savings: ${value.financial_impact.annual_cost_savings}`, boxPadding);
+          }
+          if (value.financial_impact.revenue_opportunity) {
+            addBulletPoint(`Revenue: ${value.financial_impact.revenue_opportunity}`, boxPadding);
+          }
+          if (value.financial_impact.efficiency_gains) {
+            addBulletPoint(`Efficiency: ${value.financial_impact.efficiency_gains}`, boxPadding);
+          }
+          if (value.financial_impact.payback_period) {
+            addBulletPoint(`Payback: ${value.financial_impact.payback_period}`, boxPadding);
+          }
+          if (value.financial_impact["3_year_roi"]) {
+            doc.setFont('helvetica', 'bold');
+            addBulletPoint(`3-Year ROI: ${value.financial_impact["3_year_roi"]}`, boxPadding);
+            doc.setFont('helvetica', 'normal');
+          }
+          
+          doc.setTextColor(0, 0, 0);
+          yPosition += boxPadding + 2;
+        }
+        
+        if (value.implementation) {
+          yPosition += 2;
+          const boxPadding = 3;
+          const boxHeight = 30;
+          
+          checkNewPage(boxHeight);
+          doc.setFillColor(...colors.blue.bg);
+          doc.rect(margin, yPosition - boxPadding, maxWidth, boxHeight, 'F');
+          
+          doc.setTextColor(...colors.blue.text);
+          doc.setFont('helvetica', 'bold');
+          doc.text('🚀 Implementation Plan', margin + boxPadding, yPosition);
+          yPosition += 5;
+          doc.setFont('helvetica', 'normal');
+          
+          if (value.implementation.timeline) {
+            addBulletPoint(`Timeline: ${value.implementation.timeline}`, boxPadding);
+          }
+          if (value.implementation.budget_required) {
+            addBulletPoint(`Budget: ${value.implementation.budget_required}`, boxPadding);
+          }
+          if (value.implementation.headcount_required) {
+            addBulletPoint(`Headcount: ${value.implementation.headcount_required}`, boxPadding);
+          }
+          
+          doc.setTextColor(0, 0, 0);
+          yPosition += boxPadding + 2;
+        }
+        
+        if (value.success_metrics && value.success_metrics.length > 0) {
+          yPosition += 2;
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(11);
+          addText('📊 Success Metrics', 2);
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          yPosition += 2;
+          
+          value.success_metrics.forEach((metric) => {
+            doc.setTextColor(22, 163, 74);
+            addBulletPoint(`${metric.metric}: ${metric.baseline} → ${metric.target} (${metric.timeline})`, 4);
+            doc.setTextColor(0, 0, 0);
+          });
+        }
+        
+        if (value.risks_and_mitigation && value.risks_and_mitigation.length > 0) {
+          yPosition += 2;
+          const boxPadding = 3;
+          
+          checkNewPage(20);
+          doc.setFillColor(...colors.orange.bg);
+          doc.rect(margin, yPosition - boxPadding, maxWidth, 8, 'F');
+          
+          doc.setTextColor(...colors.orange.text);
+          doc.setFont('helvetica', 'bold');
+          doc.text('⚠️ Risks & Mitigation', margin + boxPadding, yPosition);
+          yPosition += 6;
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          
+          value.risks_and_mitigation.forEach((risk) => {
+            checkNewPage(15);
+            doc.setFillColor(...colors.orange.bg);
+            const riskHeight = 12;
+            doc.rect(margin + 2, yPosition - 2, maxWidth - 4, riskHeight, 'F');
+            doc.setDrawColor(...colors.orange.border);
+            doc.setLineWidth(2);
+            doc.line(margin + 2, yPosition - 2, margin + 2, yPosition - 2 + riskHeight);
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text(risk.risk, margin + 6, yPosition);
+            yPosition += 5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text(`Mitigation: ${risk.mitigation}`, margin + 6, yPosition);
+            doc.setFontSize(10);
+            yPosition += 10;
+          });
+          
+          yPosition += 2;
+        }
+        
+        if (value.strategic_differentiation) {
+          yPosition += 2;
+          addColoredBox(`🎯 Strategic Differentiation: ${value.strategic_differentiation}`, 'purple', { border: false, bold: false });
+        }
+        
+        if (value.quick_wins) {
+          yPosition += 1;
+          addColoredBox(`⚡ Quick Wins (30-60 days): ${value.quick_wins}`, 'yellow', { border: false, bold: false });
+        }
+        
+        yPosition += 8;
+      });
+    }
   }
   
   // Step 7: Outreach Email

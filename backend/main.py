@@ -278,6 +278,26 @@ async def add_manual_persona(request: PersonaRequest, db: Session = Depends(get_
         added_by=request.added_by
     )
     db.add(persona)
+    db.commit()
+    db.refresh(persona)
+    
+    return {
+        "id": persona.id,
+        "name": persona.name,
+        "title": persona.title
+    }
+
+@app.delete("/api/reports/{report_id}")
+async def delete_report(report_id: int, db: Session = Depends(get_db)):
+    """Delete a report and its associated personas"""
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    db.delete(report)
+    db.commit()
+    
+    return {"message": "Report deleted successfully"}
     
     # Add to research queue
     queue_item = ResearchQueue(

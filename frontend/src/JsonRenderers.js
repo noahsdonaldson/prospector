@@ -223,31 +223,88 @@ export const RenderStep5 = ({ data }) => {
   
   return (
     <VStack align="stretch" spacing={4}>
-      <Heading size="md" color="gray.700">Target Personas & Value Propositions</Heading>
+      <Heading size="md" color="gray.700">Buying Committee & Stakeholder Map</Heading>
+      
+      {data.buying_committee_summary && (
+        <Box bg="purple.50" p={3} borderWidth={1} borderColor="purple.200" rounded="md">
+          <Text fontSize="sm" fontWeight="semibold" color="purple.800">Decision Structure:</Text>
+          <Text fontSize="sm">{data.buying_committee_summary}</Text>
+        </Box>
+      )}
       
       {data.personas && data.personas.length > 0 && (
-        <Table variant="simple" size="sm">
-          <Thead bg="gray.700">
-            <Tr>
-              <Th color="white">Name</Th>
-              <Th color="white">Title</Th>
-              <Th color="white">Pain Point</Th>
-              <Th color="white">AI Solution</Th>
-              <Th color="white">Expected Impact</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {data.personas.map((persona, idx) => (
-              <Tr key={idx} bg={idx % 2 === 1 ? 'gray.50' : 'white'}>
-                <Td fontWeight="semibold">{persona.name}</Td>
-                <Td>{persona.title}</Td>
-                <Td fontSize="sm">{persona.pain_point}</Td>
-                <Td fontSize="sm">{persona.ai_use_case}</Td>
-                <Td fontSize="sm" color="green.600" fontWeight="semibold">{persona.expected_outcome}</Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
+        <VStack align="stretch" spacing={3}>
+          {data.personas.map((persona, idx) => (
+            <Box key={idx} bg="white" p={4} borderWidth={2} borderColor="gray.300" rounded="md" shadow="sm">
+              <HStack justify="space-between" mb={3}>
+                <Box>
+                  <Heading size="sm" color="gray.800">{persona.name}</Heading>
+                  <Text fontSize="sm" color="gray.600">{persona.title}</Text>
+                  {persona.business_unit && <Badge colorScheme="blue" mt={1}>{persona.business_unit}</Badge>}
+                </Box>
+                <VStack align="end" spacing={1}>
+                  <Badge colorScheme={persona.outreach_priority <= 2 ? "red" : persona.outreach_priority === 3 ? "orange" : "gray"}>
+                    Priority: {persona.outreach_priority}
+                  </Badge>
+                  {persona.buying_role && <Badge colorScheme="purple">{persona.buying_role}</Badge>}
+                  {persona.decision_authority && <Badge colorScheme="green">{persona.decision_authority}</Badge>}
+                </VStack>
+              </HStack>
+              
+              <VStack align="stretch" spacing={2}>
+                {persona.reports_to && (
+                  <Text fontSize="xs" color="gray.500">Reports to: {persona.reports_to}</Text>
+                )}
+                
+                <Box>
+                  <Text fontSize="xs" fontWeight="bold" color="gray.700">Pain Point:</Text>
+                  <Text fontSize="sm">{persona.pain_point}</Text>
+                </Box>
+                
+                <Box>
+                  <Text fontSize="xs" fontWeight="bold" color="gray.700">AI Solution:</Text>
+                  <Text fontSize="sm" color="blue.700">{persona.ai_use_case}</Text>
+                </Box>
+                
+                <HStack>
+                  <Box flex="1">
+                    <Text fontSize="xs" fontWeight="bold" color="gray.700">Expected Outcome:</Text>
+                    <Text fontSize="sm" color="green.600" fontWeight="semibold">{persona.expected_outcome}</Text>
+                  </Box>
+                  <Box flex="1">
+                    <Text fontSize="xs" fontWeight="bold" color="gray.700">Aligns to:</Text>
+                    <Text fontSize="xs">{persona.strategic_alignment}</Text>
+                  </Box>
+                </HStack>
+                
+                {persona.engagement_approach && (
+                  <Box bg="blue.50" p={2} rounded="md">
+                    <Text fontSize="xs" fontWeight="bold" color="blue.800">Engagement Approach:</Text>
+                    <Text fontSize="xs">{persona.engagement_approach}</Text>
+                  </Box>
+                )}
+                
+                {persona.potential_barriers && (
+                  <Box bg="orange.50" p={2} rounded="md">
+                    <Text fontSize="xs" fontWeight="bold" color="orange.800">Potential Barriers:</Text>
+                    <Text fontSize="xs">{persona.potential_barriers}</Text>
+                  </Box>
+                )}
+                
+                {persona.value_hook && (
+                  <Box bg="green.50" p={2} rounded="md" borderLeft="3px solid" borderColor="green.500">
+                    <Text fontSize="xs" fontWeight="bold" color="green.800">Value Hook:</Text>
+                    <Text fontSize="sm" fontStyle="italic">"{persona.value_hook}"</Text>
+                  </Box>
+                )}
+                
+                {persona.data_source && (
+                  <Text fontSize="xs" color="gray.400">Source: {persona.data_source}</Text>
+                )}
+              </VStack>
+            </Box>
+          ))}
+        </VStack>
       )}
       
       {data.research_note && (
@@ -267,33 +324,157 @@ export const RenderStep6 = ({ data }) => {
   
   return (
     <VStack align="stretch" spacing={4}>
-      <Heading size="md" color="gray.700">Value Realization Matrix</Heading>
+      <Heading size="md" color="gray.700">Business Case & ROI Analysis</Heading>
+      
+      {data.executive_summary && (
+        <Box bg="green.50" p={4} borderWidth={2} borderColor="green.400" rounded="md">
+          <Text fontSize="sm" fontWeight="bold" color="green.800" mb={1}>Executive Summary</Text>
+          <Text fontSize="md">{data.executive_summary}</Text>
+        </Box>
+      )}
       
       {data.value_realizations && data.value_realizations.length > 0 && (
-        <Table variant="simple" size="sm">
-          <Thead bg="gray.700">
-            <Tr>
-              <Th color="white">Executive</Th>
-              <Th color="white">Title</Th>
-              <Th color="white">Pain Point</Th>
-              <Th color="white">AI Solution</Th>
-              <Th color="white">Expected Outcome</Th>
-              <Th color="white">Strategic Alignment</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {data.value_realizations.map((value, idx) => (
-              <Tr key={idx} bg={idx % 2 === 1 ? 'gray.50' : 'white'}>
-                <Td fontWeight="semibold">{value.name}</Td>
-                <Td>{value.title}</Td>
-                <Td fontSize="sm">{value.pain_point}</Td>
-                <Td fontSize="sm">{value.ai_use_case}</Td>
-                <Td fontSize="sm" color="green.600" fontWeight="semibold">{value.expected_outcome}</Td>
-                <Td fontSize="xs">{value.strategic_alignment}</Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
+        <VStack align="stretch" spacing={4}>
+          {data.value_realizations.map((value, idx) => (
+            <Box key={idx} bg="white" p={5} borderWidth={2} borderColor="gray.400" rounded="lg" shadow="md">
+              <HStack justify="space-between" mb={3}>
+                <Box>
+                  <Heading size="md" color="gray.800">{value.use_case_name}</Heading>
+                  {value.business_unit && <Badge colorScheme="blue" mt={1}>{value.business_unit}</Badge>}
+                  {value.executive_sponsor && (
+                    <Text fontSize="xs" color="gray.600" mt={1}>Executive Sponsor: {value.executive_sponsor}</Text>
+                  )}
+                </Box>
+              </HStack>
+              
+              {value.problem_statement && (
+                <Box mb={3}>
+                  <Text fontSize="sm" fontWeight="bold" color="red.700">Problem:</Text>
+                  <Text fontSize="sm">{value.problem_statement}</Text>
+                </Box>
+              )}
+              
+              {value.solution_overview && (
+                <Box mb={3}>
+                  <Text fontSize="sm" fontWeight="bold" color="blue.700">Solution:</Text>
+                  <Text fontSize="sm">{value.solution_overview}</Text>
+                </Box>
+              )}
+              
+              {value.financial_impact && (
+                <Box bg="green.50" p={3} rounded="md" mb={3}>
+                  <Heading size="sm" color="green.800" mb={2}>💰 Financial Impact</Heading>
+                  <VStack align="stretch" spacing={1}>
+                    {value.financial_impact.annual_cost_savings && (
+                      <HStack><Text fontSize="sm" fontWeight="bold">Cost Savings:</Text><Text fontSize="sm" color="green.700">{value.financial_impact.annual_cost_savings}</Text></HStack>
+                    )}
+                    {value.financial_impact.revenue_opportunity && (
+                      <HStack><Text fontSize="sm" fontWeight="bold">Revenue Opportunity:</Text><Text fontSize="sm" color="green.700">{value.financial_impact.revenue_opportunity}</Text></HStack>
+                    )}
+                    {value.financial_impact.efficiency_gains && (
+                      <HStack><Text fontSize="sm" fontWeight="bold">Efficiency Gains:</Text><Text fontSize="sm" color="green.700">{value.financial_impact.efficiency_gains}</Text></HStack>
+                    )}
+                    {value.financial_impact.payback_period && (
+                      <HStack><Text fontSize="sm" fontWeight="bold">Payback Period:</Text><Text fontSize="sm" color="orange.700">{value.financial_impact.payback_period}</Text></HStack>
+                    )}
+                    {value.financial_impact["3_year_roi"] && (
+                      <HStack><Text fontSize="sm" fontWeight="bold">3-Year ROI:</Text><Text fontSize="sm" color="green.800" fontWeight="bold">{value.financial_impact["3_year_roi"]}</Text></HStack>
+                    )}
+                  </VStack>
+                </Box>
+              )}
+              
+              {value.implementation && (
+                <Box bg="blue.50" p={3} rounded="md" mb={3}>
+                  <Heading size="sm" color="blue.800" mb={2}>🚀 Implementation Plan</Heading>
+                  <VStack align="stretch" spacing={1}>
+                    {value.implementation.timeline && (
+                      <HStack><Text fontSize="sm" fontWeight="bold">Timeline:</Text><Text fontSize="sm">{value.implementation.timeline}</Text></HStack>
+                    )}
+                    {value.implementation.budget_required && (
+                      <HStack><Text fontSize="sm" fontWeight="bold">Budget:</Text><Text fontSize="sm">{value.implementation.budget_required}</Text></HStack>
+                    )}
+                    {value.implementation.headcount_required && (
+                      <HStack><Text fontSize="sm" fontWeight="bold">Headcount:</Text><Text fontSize="sm">{value.implementation.headcount_required}</Text></HStack>
+                    )}
+                    {value.implementation.technology_stack && value.implementation.technology_stack.length > 0 && (
+                      <Box>
+                        <Text fontSize="sm" fontWeight="bold">Technology:</Text>
+                        <HStack spacing={2} mt={1}>
+                          {value.implementation.technology_stack.map((tech, i) => (
+                            <Badge key={i} colorScheme="cyan" fontSize="xs">{tech}</Badge>
+                          ))}
+                        </HStack>
+                      </Box>
+                    )}
+                  </VStack>
+                </Box>
+              )}
+              
+              {value.success_metrics && value.success_metrics.length > 0 && (
+                <Box mb={3}>
+                  <Heading size="sm" color="gray.700" mb={2}>📊 Success Metrics</Heading>
+                  <Table size="sm" variant="simple">
+                    <Thead bg="gray.100">
+                      <Tr>
+                        <Th>Metric</Th>
+                        <Th>Baseline</Th>
+                        <Th>Target</Th>
+                        <Th>Timeline</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {value.success_metrics.map((metric, i) => (
+                        <Tr key={i}>
+                          <Td fontSize="xs">{metric.metric}</Td>
+                          <Td fontSize="xs">{metric.baseline}</Td>
+                          <Td fontSize="xs" fontWeight="bold" color="green.600">{metric.target}</Td>
+                          <Td fontSize="xs">{metric.timeline}</Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                </Box>
+              )}
+              
+              {value.risks_and_mitigation && value.risks_and_mitigation.length > 0 && (
+                <Box bg="orange.50" p={3} rounded="md" mb={3}>
+                  <Heading size="sm" color="orange.800" mb={2}>⚠️ Risks & Mitigation</Heading>
+                  <VStack align="stretch" spacing={2}>
+                    {value.risks_and_mitigation.map((risk, i) => (
+                      <Box key={i} borderLeft="3px solid" borderColor="orange.400" pl={2}>
+                        <HStack spacing={2} mb={1}>
+                          <Badge colorScheme={risk.likelihood === "High" ? "red" : risk.likelihood === "Medium" ? "orange" : "yellow"} fontSize="xs">
+                            {risk.likelihood}
+                          </Badge>
+                          <Badge colorScheme={risk.impact === "High" ? "red" : risk.impact === "Medium" ? "orange" : "yellow"} fontSize="xs">
+                            Impact: {risk.impact}
+                          </Badge>
+                        </HStack>
+                        <Text fontSize="sm" fontWeight="bold">{risk.risk}</Text>
+                        <Text fontSize="xs" color="gray.600">Mitigation: {risk.mitigation}</Text>
+                      </Box>
+                    ))}
+                  </VStack>
+                </Box>
+              )}
+              
+              {value.strategic_differentiation && (
+                <Box bg="purple.50" p={3} rounded="md" mb={2}>
+                  <Text fontSize="sm" fontWeight="bold" color="purple.800">🎯 Strategic Differentiation:</Text>
+                  <Text fontSize="sm">{value.strategic_differentiation}</Text>
+                </Box>
+              )}
+              
+              {value.quick_wins && (
+                <Box bg="yellow.50" p={3} rounded="md">
+                  <Text fontSize="sm" fontWeight="bold" color="yellow.800">⚡ Quick Wins (30-60 days):</Text>
+                  <Text fontSize="sm">{value.quick_wins}</Text>
+                </Box>
+              )}
+            </Box>
+          ))}
+        </VStack>
       )}
     </VStack>
   );

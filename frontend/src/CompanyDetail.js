@@ -5,20 +5,32 @@ import {
   Tbody, Tr, Th, Td, Badge, Spinner, Alert, AlertIcon, AlertDescription,
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody,
   ModalCloseButton, Input, FormControl, FormLabel, useDisclosure, Tabs,
-  TabList, TabPanels, Tab, TabPanel, Divider
+  TabList, TabPanels, Tab, TabPanel, Divider, useToast
 } from '@chakra-ui/react';
-import { ArrowLeft, Calendar, Users, UserPlus, Download, RefreshCw } from 'lucide-react';
-import { jsPDF } from 'jspdf';
+import { ArrowLeft, Calendar, Users, UserPlus, Download, RefreshCw, Eye, Trash2 } from 'lucide-react';
+import { generatePDFFromJSON } from './PdfGenerator';
+import { 
+  RenderStep1, 
+  RenderStep2, 
+  RenderStep3, 
+  RenderStep4, 
+  RenderStep5, 
+  RenderStep6, 
+  RenderStep7 
+} from './JsonRenderers';
 
 const CompanyDetail = () => {
   const { companyId } = useParams();
   const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
+  const toast = useToast();
   
   const [company, setCompany] = useState(null);
   const [reports, setReports] = useState([]);
   const [personas, setPersonas] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [viewingReport, setViewingReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -86,94 +98,90 @@ const CompanyDetail = () => {
         setNewPersonaTitle('');
         onClose();
         fetchCompanyData(); // Refresh data
+        toast({
+          title: 'Persona added',
+          status: 'success',
+          duration: 3000,
+          isClosable: true
+        });
       }
     } catch (err) {
       console.error('Failed to add persona:', err);
+      toast({
+        title: 'Error adding persona',
+        description: err.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
     } finally {
       setAddingPersona(false);
     }
   };
 
-  const downloadPDF = (report) => {
-    const doc = new jsPDF();
-    const margin = 15;
-    let yPosition = 20;
+  const handleViewReport = async (reportId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/reports/${reportId}`);
+      const reportDetails = await response.json();
+      setViewingReport(reportDetails);
+      onViewOpen();
+    } catch (err) {
+      toast({
+        title: 'Error loading report',
+        description: err.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+    }
+  };
 
-    // Helper to strip markdown
-    const stripMarkdown = (text) => {
-      if (!text) return '';
-      return text
-        .replace(/<[^>]*>/g, '')
-        .replace(/\*\*\*(.*?)\*\*\*/g, '$1')
-        .replace(/\*\*(.*?)\*\*/g, '$1')
-        .replace(/\*(.*?)\*/g, '$1')
-        .replace(/__(.*?)__/g, '$1')
-        .replace(/_(.*?)_/g, '$1')
-        .replace(/`(.*?)`/g, '$1')
-        .replace(/~~(.*?)~~/g, '$1')
-        .replace(/\[(.*?)\]\(.*?\)/g, '$1')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .trim();
-    };
+  const handleDeleteReport = async (reportId) => {
+    if (!window.confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
+      return;
+    }
 
-    // Title
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${report.company.name} - Account Research`, margin, yPosition);
-    yPosition += 10;
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Generated: ${new Date(report.metadata.created_at).toLocaleDateString()}`, margin, yPosition);
-    yPosition += 15;
-
-    // Steps
-    const steps = [
-      { name: 'Strategic Objectives', key: 'step1_strategic_objectives' },
-      { name: 'Business Unit Alignment', key: 'step2_bu_alignment' },
-      { name: 'Business Unit Deep-Dive', key: 'step3_bu_deepdive' },
-      { name: 'AI Alignment', key: 'step4_ai_alignment' },
-      { name: 'Persona Mapping', key: 'step5_persona_mapping' },
-      { name: 'Value Realization', key: 'step6_value_realization' },
-      { name: 'Outreach Email', key: 'step7_outreach_email' }
-    ];
-
-    steps.forEach(step => {
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-      }
-
-      const stepData = report.steps[step.key];
-      if (!stepData) return;
-
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(step.name, margin, yPosition);
-      yPosition += 8;
-
-      const content = stepData.markdown || stepData.data || '';
-      const lines = stripMarkdown(content).split('\n').slice(0, 20); // Limit lines
-
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      lines.forEach(line => {
-        if (yPosition > 270) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        const wrappedLines = doc.splitTextToSize(line, 180);
-        wrappedLines.forEach(wrapped => {
-          doc.text(wrapped, margin, yPosition);
-          yPosition += 5;
-        });
+    try {
+      const response = await fetch(`http://localhost:8000/api/reports/${reportId}`, {
+        method: 'DELETE'
       });
 
-      yPosition += 5;
-    });
+      if (response.ok) {
+        toast({
+          title: 'Report deleted',
+          status: 'success',
+          duration: 3000,
+          isClosable: true
+        });
+        fetchCompanyData(); // Refresh data
+      } else {
+        throw new Error('Failed to delete report');
+      }
+    } catch (err) {
+      toast({
+        title: 'Error deleting report',
+        description: err.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+    }
+  };
 
-    doc.save(`${report.company.name}_Report_${report.id}.pdf`);
+  const downloadPDF = async (reportId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/reports/${reportId}`);
+      const reportDetails = await response.json();
+      generatePDFFromJSON(reportDetails);
+    } catch (err) {
+      toast({
+        title: 'Error generating PDF',
+        description: err.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+    }
   };
 
   const getStalenessStatus = (lastResearched) => {
@@ -330,15 +338,28 @@ const CompanyDetail = () => {
                             <Button
                               size="sm"
                               colorScheme="blue"
+                              leftIcon={<Eye size={16} />}
+                              onClick={() => handleViewReport(report.id)}
+                            >
+                              View
+                            </Button>
+                            <Button
+                              size="sm"
+                              colorScheme="blue"
                               variant="outline"
                               leftIcon={<Download size={16} />}
-                              onClick={() => {
-                                fetch(`http://localhost:8000/api/reports/${report.id}`)
-                                  .then(res => res.json())
-                                  .then(reportDetails => downloadPDF(reportDetails));
-                              }}
+                              onClick={() => downloadPDF(report.id)}
                             >
-                              Download PDF
+                              Download
+                            </Button>
+                            <Button
+                              size="sm"
+                              colorScheme="red"
+                              variant="outline"
+                              leftIcon={<Trash2 size={16} />}
+                              onClick={() => handleDeleteReport(report.id)}
+                            >
+                              Delete
                             </Button>
                           </HStack>
                         </HStack>
@@ -453,6 +474,84 @@ const CompanyDetail = () => {
               isDisabled={!newPersonaName.trim() || !newPersonaTitle.trim()}
             >
               Add Person
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* View Report Modal */}
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="6xl">
+        <ModalOverlay />
+        <ModalContent maxH="90vh">
+          <ModalHeader>
+            {viewingReport && `${viewingReport.company.name} - Research Report`}
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody overflowY="auto" pb={6}>
+            {viewingReport && (
+              <Tabs colorScheme="gray">
+                <TabList>
+                  <Tab>⛰️ Strategic Objectives</Tab>
+                  <Tab>🗺️ BU Alignment</Tab>
+                  <Tab>⛏️ BU Deep-Dive</Tab>
+                  <Tab>🤖 AI Alignment</Tab>
+                  <Tab>👥 Persona Mapping</Tab>
+                  <Tab>💰 Value Realization</Tab>
+                  <Tab>✉️ Outreach Email</Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel>
+                    {viewingReport.steps.step1_strategic_objectives?.data && (
+                      <RenderStep1 data={viewingReport.steps.step1_strategic_objectives.data} />
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {viewingReport.steps.step2_bu_alignment?.data && (
+                      <RenderStep2 data={viewingReport.steps.step2_bu_alignment.data} />
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {viewingReport.steps.step3_bu_deepdive?.data && (
+                      <RenderStep3 data={viewingReport.steps.step3_bu_deepdive.data} />
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {viewingReport.steps.step4_ai_alignment?.data && (
+                      <RenderStep4 data={viewingReport.steps.step4_ai_alignment.data} />
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {viewingReport.steps.step5_persona_mapping?.data && (
+                      <RenderStep5 data={viewingReport.steps.step5_persona_mapping.data} />
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {viewingReport.steps.step6_value_realization?.data && (
+                      <RenderStep6 data={viewingReport.steps.step6_value_realization.data} />
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {viewingReport.steps.step7_outreach_email?.data && (
+                      <RenderStep7 data={viewingReport.steps.step7_outreach_email.data} />
+                    )}
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              colorScheme="blue"
+              mr={3}
+              leftIcon={<Download size={16} />}
+              onClick={() => {
+                generatePDFFromJSON(viewingReport);
+              }}
+            >
+              Download PDF
+            </Button>
+            <Button variant="ghost" onClick={onViewClose}>
+              Close
             </Button>
           </ModalFooter>
         </ModalContent>

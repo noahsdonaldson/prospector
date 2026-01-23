@@ -223,9 +223,9 @@ CRITICAL: Return only valid JSON. No markdown."""
         context1 = step1_context[:1000] if len(step1_context) > 1000 else step1_context
         context4 = step4_context[:1500] if len(step4_context) > 1500 else step4_context
         
-        return f"""**Persona Mapping & Personalized Outreach Strategy**
+        return f"""**Persona Mapping: Buying Committee & Stakeholder Intelligence**
 
-**Role**: Executive Outreach Strategist. Identify exact personas to target and draft high-impact outreach strategy.
+**Role**: Strategic Account Intelligence Analyst. Build comprehensive stakeholder map identifying decision-makers, influencers, and engagement strategy.
 
 **Context from Step 1:**
 {context1}
@@ -247,11 +247,12 @@ Do NOT use "TBD" unless you have exhausted all public sources.
 
 **Task Requirements**
 1. Identify 3-5 specific executives WITH ACTUAL NAMES and exact titles
-2. Define "Why Now" pain points for each persona
-3. Map AI solutions to their specific challenges
-4. Define quantifiable success metrics (use ↑/↓ symbols)
-5. Align to enterprise strategic pillars
-6. Create tailored value proposition
+2. Map their buying committee roles (Economic Buyer, Champion, Technical Evaluator, etc.)
+3. Assess decision authority (Budget owner, Influencer, Approver, End user)
+4. Define "Why Now" pain points for each persona
+5. Map AI solutions to their specific challenges
+6. Identify engagement barriers and enablers
+7. Assign outreach priority (1-5, where 1 is highest)
 
 **OUTPUT FORMAT - RETURN VALID JSON ONLY**
 
@@ -261,16 +262,22 @@ Do NOT use "TBD" unless you have exhausted all public sources.
     {{
       "name": "Actual Executive Name",
       "title": "Exact job title",
-      "role_in_decision": "Economic Buyer/Champion/Technical Gatekeeper",
       "business_unit": "BU they oversee",
+      "buying_role": "Economic Buyer/Champion/Technical Evaluator/Influencer/Blocker",
+      "decision_authority": "Budget Owner/Final Approver/Recommender/End User",
+      "reports_to": "Name of their manager if known",
       "pain_point": "Specific operational challenge they face",
       "ai_use_case": "AI solution that addresses their pain point",
       "expected_outcome": "↑ STP 15%, ↓ OPEX 20%",
       "strategic_alignment": "Maps to which enterprise objective",
+      "engagement_approach": "How to approach this person (peer intro, direct, partner, event)",
+      "potential_barriers": "What might block engagement (risk averse, vendor locked, etc.)",
+      "outreach_priority": 1-5,
       "value_hook": "Concise value proposition statement",
       "data_source": "Where you found this person's name/role"
     }}
   ],
+  "buying_committee_summary": "Overview of decision-making structure and power dynamics",
   "research_note": "Explain research methodology if names were difficult to find"
 }}
 
@@ -281,9 +288,9 @@ CRITICAL: Name field MUST contain actual executive names from public sources. Re
         context4 = step4_context[:1500] if len(step4_context) > 1500 else step4_context
         context5 = step5_context[:1500] if len(step5_context) > 1500 else step5_context
         
-        return f"""**Value Realization & Strategic Alignment Mapping**
+        return f"""**Value Realization: Business Case & ROI Analysis**
 
-**Role**: Strategic Solutions Architect specializing in AI transformation. Synthesize research into final Value Realization structure for {company_name}.
+**Role**: Strategic Business Value Consultant. Build quantified business case showing financial impact, implementation roadmap, and success metrics.
 
 **Context from Step 1:**
 {context1}
@@ -294,9 +301,16 @@ CRITICAL: Name field MUST contain actual executive names from public sources. Re
 **Context from Step 5:**
 {context5}
 
-**IMPORTANT**: Use the EXACT personas (names and titles) identified in Step 5. Do not create new personas.
+**Objective**: Transform AI use cases into quantified business value with financial modeling, implementation timeline, resource requirements, and risk mitigation.
 
-**Objective**: Map specific decision-makers to operational friction points, propose AI solutions, define success metrics, and demonstrate strategic alignment.
+**Task Requirements**
+1. Select the TOP 2-3 highest-impact AI use cases from Step 4
+2. Build detailed financial model (cost savings, revenue increase, efficiency gains)
+3. Define implementation roadmap with phases and timeline
+4. Identify resource requirements (budget, headcount, technology)
+5. Map risks and mitigation strategies
+6. Define measurable success criteria and KPIs
+7. Highlight competitive advantage and strategic differentiation
 
 **OUTPUT FORMAT - RETURN VALID JSON ONLY**
 
@@ -304,17 +318,48 @@ CRITICAL: Name field MUST contain actual executive names from public sources. Re
   "company": "{company_name}",
   "value_realizations": [
     {{
-      "name": "Executive name from Step 5",
-      "title": "Title from Step 5",
-      "pain_point": "Biggest operational challenge",
-      "ai_use_case": "Specific AI/Agentic AI solution",
-      "expected_outcome": "↑ Metric 15%, ↓ Cost 20%",
-      "strategic_alignment": "Enterprise strategic objective (exact terminology from Step 1)"
+      "use_case_name": "Name of AI use case",
+      "business_unit": "Primary BU benefiting",
+      "executive_sponsor": "Name from Step 5 who would champion this",
+      "problem_statement": "Clear problem being solved",
+      "solution_overview": "High-level solution approach",
+      "financial_impact": {{
+        "annual_cost_savings": "$X.XM explanation",
+        "revenue_opportunity": "$X.XM explanation",
+        "efficiency_gains": "X% improvement in metric",
+        "payback_period": "X months",
+        "3_year_roi": "XXX%"
+      }},
+      "implementation": {{
+        "timeline": "X months (Phase 1: X weeks, Phase 2: X weeks, Phase 3: X weeks)",
+        "budget_required": "$XXXk - $X.XM",
+        "headcount_required": "X FTEs (roles)",
+        "technology_stack": ["AI platform", "Integration tools", "Infrastructure"]
+      }},
+      "success_metrics": [
+        {{
+          "metric": "KPI name",
+          "baseline": "Current state",
+          "target": "Future state",
+          "timeline": "When to achieve"
+        }}
+      ],
+      "risks_and_mitigation": [
+        {{
+          "risk": "Potential obstacle",
+          "likelihood": "High/Medium/Low",
+          "impact": "High/Medium/Low",
+          "mitigation": "How to address"
+        }}
+      ],
+      "strategic_differentiation": "How this creates competitive advantage",
+      "quick_wins": "Early value that can be demonstrated in 30-60 days"
     }}
-  ]
+  ],
+  "executive_summary": "2-3 sentence overview of total value opportunity"
 }}
 
-CRITICAL: Use exact names/titles from Step 5. Return only valid JSON."""
+CRITICAL: Focus on QUANTIFIED business value with specific dollar amounts and percentages. Return only valid JSON."""
 
     def step7_outreach_email(self, company_name: str, step1_context: str, step4_context: str, step5_context: str, step6_context: str) -> str:
         context1 = step1_context[:800] if len(step1_context) > 800 else step1_context
