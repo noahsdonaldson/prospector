@@ -22,8 +22,16 @@ export const generatePDFFromJSON = (results) => {
     const sizes = { 1: 16, 2: 14, 3: 12 };
     doc.setFontSize(sizes[level] || 12);
     doc.setFont('helvetica', 'bold');
-    doc.text(text, margin, yPosition);
-    yPosition += level === 1 ? 10 : 8;
+    
+    // Split text to handle long headings
+    const lines = doc.splitTextToSize(text, maxWidth);
+    lines.forEach((line) => {
+      checkNewPage();
+      doc.text(line, margin, yPosition);
+      yPosition += 5;
+    });
+    
+    yPosition += level === 1 ? 5 : 3;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
   };
@@ -249,10 +257,32 @@ export const generatePDFFromJSON = (results) => {
     addHeading('AI/Agentic AI Use Cases', 1);
     
     step4.ai_use_cases.forEach((useCase) => {
+      checkNewPage(35);
       addHeading(useCase.ai_use_case, 3);
-      addText(`Objective: ${useCase.objective}`);
-      addText(`Expected Outcome: ${useCase.expected_outcome}`);
-      addText(`Strategic Alignment: ${useCase.strategic_alignment}`, 2);
+      
+      // Objective
+      checkNewPage();
+      doc.setFont('helvetica', 'bold');
+      addText('Objective:');
+      doc.setFont('helvetica', 'normal');
+      addText(useCase.objective, 5);
+      yPosition += 2;
+      
+      // Expected Outcome
+      checkNewPage();
+      doc.setFont('helvetica', 'bold');
+      addText('Expected Outcome:');
+      doc.setFont('helvetica', 'normal');
+      addText(useCase.expected_outcome, 5);
+      yPosition += 2;
+      
+      // Strategic Alignment
+      checkNewPage();
+      doc.setFont('helvetica', 'bold');
+      addText('Strategic Alignment:');
+      doc.setFont('helvetica', 'normal');
+      addText(useCase.strategic_alignment, 5);
+      
       yPosition += 5;
     });
     
@@ -475,133 +505,150 @@ export const generatePDFFromJSON = (results) => {
         
         if (value.financial_impact) {
           yPosition += 3;
-          const boxPadding = 3;
-          let boxContent = '💰 Financial Impact\n';
-          if (value.financial_impact.annual_cost_savings) 
-            boxContent += `• Cost Savings: ${value.financial_impact.annual_cost_savings}\n`;
-          if (value.financial_impact.revenue_opportunity) 
-            boxContent += `• Revenue: ${value.financial_impact.revenue_opportunity}\n`;
-          if (value.financial_impact.efficiency_gains) 
-            boxContent += `• Efficiency: ${value.financial_impact.efficiency_gains}\n`;
-          if (value.financial_impact.payback_period) 
-            boxContent += `• Payback: ${value.financial_impact.payback_period}\n`;
-          if (value.financial_impact["3_year_roi"]) 
-            boxContent += `• 3-Year ROI: ${value.financial_impact["3_year_roi"]}`;
           
-          const lines = doc.splitTextToSize(boxContent, maxWidth - (2 * boxPadding));
-          const boxHeight = (lines.length * 5) + (2 * boxPadding);
+          checkNewPage(35);
           
-          checkNewPage(boxHeight + 5);
-          doc.setFillColor(...colors.green.bg);
-          doc.rect(margin, yPosition - boxPadding, maxWidth, boxHeight, 'F');
-          
-          doc.setTextColor(...colors.green.text);
+          // Header with green color
+          doc.setTextColor(22, 101, 52); // green.800
           doc.setFont('helvetica', 'bold');
-          doc.text('💰 Financial Impact', margin + boxPadding, yPosition);
-          yPosition += 5;
+          doc.setFontSize(11);
+          addText('Financial Impact');
           doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          doc.setTextColor(0, 0, 0);
+          yPosition += 1;
+          
+          // Content with left green border
+          const contentStartY = yPosition;
           
           if (value.financial_impact.annual_cost_savings) {
-            addBulletPoint(`Cost Savings: ${value.financial_impact.annual_cost_savings}`, boxPadding);
+            addBulletPoint(`Cost Savings: ${value.financial_impact.annual_cost_savings}`, 5);
           }
           if (value.financial_impact.revenue_opportunity) {
-            addBulletPoint(`Revenue: ${value.financial_impact.revenue_opportunity}`, boxPadding);
+            addBulletPoint(`Revenue: ${value.financial_impact.revenue_opportunity}`, 5);
           }
           if (value.financial_impact.efficiency_gains) {
-            addBulletPoint(`Efficiency: ${value.financial_impact.efficiency_gains}`, boxPadding);
+            addBulletPoint(`Efficiency: ${value.financial_impact.efficiency_gains}`, 5);
           }
           if (value.financial_impact.payback_period) {
-            addBulletPoint(`Payback: ${value.financial_impact.payback_period}`, boxPadding);
+            addBulletPoint(`Payback: ${value.financial_impact.payback_period}`, 5);
           }
           if (value.financial_impact["3_year_roi"]) {
             doc.setFont('helvetica', 'bold');
-            addBulletPoint(`3-Year ROI: ${value.financial_impact["3_year_roi"]}`, boxPadding);
+            addBulletPoint(`3-Year ROI: ${value.financial_impact["3_year_roi"]}`, 5);
             doc.setFont('helvetica', 'normal');
           }
           
+          // Draw left border accent
+          doc.setDrawColor(74, 222, 128); // green.400
+          doc.setLineWidth(3);
+          doc.line(margin, contentStartY - 3, margin, yPosition);
+          
           doc.setTextColor(0, 0, 0);
-          yPosition += boxPadding + 2;
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          yPosition += 3;
         }
         
         if (value.implementation) {
-          yPosition += 2;
-          const boxPadding = 3;
-          const boxHeight = 30;
+          yPosition += 3;
           
-          checkNewPage(boxHeight);
-          doc.setFillColor(...colors.blue.bg);
-          doc.rect(margin, yPosition - boxPadding, maxWidth, boxHeight, 'F');
+          checkNewPage(30);
           
-          doc.setTextColor(...colors.blue.text);
+          // Header with blue color
+          doc.setTextColor(29, 78, 216); // blue.700
           doc.setFont('helvetica', 'bold');
-          doc.text('🚀 Implementation Plan', margin + boxPadding, yPosition);
-          yPosition += 5;
+          doc.setFontSize(11);
+          addText('Implementation Plan');
           doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          doc.setTextColor(0, 0, 0);
+          yPosition += 1;
+          
+          // Content with left blue border
+          const contentStartY = yPosition;
           
           if (value.implementation.timeline) {
-            addBulletPoint(`Timeline: ${value.implementation.timeline}`, boxPadding);
+            addBulletPoint(`Timeline: ${value.implementation.timeline}`, 5);
           }
           if (value.implementation.budget_required) {
-            addBulletPoint(`Budget: ${value.implementation.budget_required}`, boxPadding);
+            addBulletPoint(`Budget: ${value.implementation.budget_required}`, 5);
           }
           if (value.implementation.headcount_required) {
-            addBulletPoint(`Headcount: ${value.implementation.headcount_required}`, boxPadding);
+            addBulletPoint(`Headcount: ${value.implementation.headcount_required}`, 5);
           }
           
+          // Draw left border accent
+          doc.setDrawColor(96, 165, 250); // blue.400
+          doc.setLineWidth(3);
+          doc.line(margin, contentStartY - 3, margin, yPosition);
+          
           doc.setTextColor(0, 0, 0);
-          yPosition += boxPadding + 2;
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          yPosition += 3;
         }
         
         if (value.success_metrics && value.success_metrics.length > 0) {
           yPosition += 2;
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(11);
-          addText('📊 Success Metrics', 2);
+          addText('Success Metrics', 2);
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
           yPosition += 2;
           
           value.success_metrics.forEach((metric) => {
+            checkNewPage(15);
             doc.setTextColor(22, 163, 74);
-            addBulletPoint(`${metric.metric}: ${metric.baseline} → ${metric.target} (${metric.timeline})`, 4);
+            const metricText = `${metric.metric}: ${metric.baseline} -> ${metric.target} (${metric.timeline})`;
+            addBulletPoint(metricText, 4);
             doc.setTextColor(0, 0, 0);
           });
         }
         
         if (value.risks_and_mitigation && value.risks_and_mitigation.length > 0) {
-          yPosition += 2;
-          const boxPadding = 3;
+          yPosition += 3;
           
           checkNewPage(20);
-          doc.setFillColor(...colors.orange.bg);
-          doc.rect(margin, yPosition - boxPadding, maxWidth, 8, 'F');
           
-          doc.setTextColor(...colors.orange.text);
+          // Header with orange color
+          doc.setTextColor(154, 52, 18); // orange.800
           doc.setFont('helvetica', 'bold');
-          doc.text('⚠️ Risks & Mitigation', margin + boxPadding, yPosition);
-          yPosition += 6;
+          doc.setFontSize(11);
+          addText('Risks & Mitigation');
+          doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(0, 0, 0);
+          yPosition += 2;
           
           value.risks_and_mitigation.forEach((risk) => {
-            checkNewPage(15);
-            doc.setFillColor(...colors.orange.bg);
-            const riskHeight = 12;
-            doc.rect(margin + 2, yPosition - 2, maxWidth - 4, riskHeight, 'F');
-            doc.setDrawColor(...colors.orange.border);
-            doc.setLineWidth(2);
-            doc.line(margin + 2, yPosition - 2, margin + 2, yPosition - 2 + riskHeight);
+            checkNewPage(20);
+            const itemStartY = yPosition;
             
+            // Risk title
             doc.setFont('helvetica', 'bold');
-            doc.text(risk.risk, margin + 6, yPosition);
-            yPosition += 5;
+            addText(risk.risk, 5);
+            
+            // Mitigation
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
-            doc.text(`Mitigation: ${risk.mitigation}`, margin + 6, yPosition);
+            doc.setTextColor(75, 85, 99); // gray.600
+            addText(`Mitigation: ${risk.mitigation}`, 5);
             doc.setFontSize(10);
-            yPosition += 10;
+            doc.setTextColor(0, 0, 0);
+            
+            // Draw left border accent for this risk
+            doc.setDrawColor(251, 146, 60); // orange.400
+            doc.setLineWidth(3);
+            doc.line(margin, itemStartY - 2, margin, yPosition);
+            
+            yPosition += 3;
           });
           
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
           yPosition += 2;
         }
         
