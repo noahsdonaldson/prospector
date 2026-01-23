@@ -100,8 +100,9 @@ class ResearchOrchestrator:
             
             # Get recent web data if search is available
             web_context = ""
+            step1_citations = []
             if self.search_client:
-                web_context = self.search_client.search_for_step(
+                web_context, step1_citations = self.search_client.search_for_step(
                     company_name, "strategic objectives plans initiatives 2024 2025"
                 )
                 self.metadata["tavily_searches"] += 1
@@ -119,7 +120,8 @@ class ResearchOrchestrator:
             results["steps"]["step1_strategic_objectives"] = {
                 "status": "complete",
                 "data": step1_result,
-                "raw": step1_raw
+                "raw": step1_raw,
+                "citations": step1_citations
             }
             
             # Try to extract industry from Step 1 JSON
@@ -150,8 +152,9 @@ class ResearchOrchestrator:
             
             # Get recent web data if search is available
             web_context = ""
+            step2_citations = []
             if self.search_client:
-                web_context = self.search_client.search_for_step(
+                web_context, step2_citations = self.search_client.search_for_step(
                     company_name, "business units divisions segments structure 2024 2025"
                 )
                 self.metadata["tavily_searches"] += 1
@@ -171,7 +174,8 @@ class ResearchOrchestrator:
             results["steps"]["step2_bu_alignment"] = {
                 "status": "complete",
                 "data": step2_result,
-                "raw": step2_raw
+                "raw": step2_raw,
+                "citations": step2_citations
             }
             
             yield {
@@ -193,6 +197,7 @@ class ResearchOrchestrator:
             
             business_units = self._extract_business_units(step2_result)
             step3_results = {}
+            step3_citations = []
             
             for idx, bu in enumerate(business_units[:3]):  # Limit to 3 BUs
                 yield {
@@ -205,11 +210,13 @@ class ResearchOrchestrator:
                 
                 # Get recent web data if search is available
                 web_context = ""
+                bu_citations = []
                 if self.search_client:
-                    web_context = self.search_client.search_for_step(
+                    web_context, bu_citations = self.search_client.search_for_step(
                         company_name, f"{bu} business unit operations initiatives 2024 2025"
                     )
                     self.metadata["tavily_searches"] += 1
+                    step3_citations.extend(bu_citations)
                 
                 step3_prompt = self.prompts.step3_bu_deepdive(company_name, bu, step1_context)
                 if web_context:
@@ -227,7 +234,8 @@ class ResearchOrchestrator:
             
             results["steps"]["step3_bu_deepdive"] = {
                 "status": "complete",
-                "data": step3_results
+                "data": step3_results,
+                "citations": step3_citations
             }
             
             yield {
@@ -249,8 +257,9 @@ class ResearchOrchestrator:
             
             # Get recent web data if search is available
             web_context = ""
+            step4_citations = []
             if self.search_client:
-                web_context = self.search_client.search_for_step(
+                web_context, step4_citations = self.search_client.search_for_step(
                     company_name, "AI artificial intelligence machine learning initiatives 2024 2025"
                 )
                 self.metadata["tavily_searches"] += 1
@@ -271,7 +280,8 @@ class ResearchOrchestrator:
             results["steps"]["step4_ai_alignment"] = {
                 "status": "complete",
                 "data": step4_result,
-                "raw": step4_raw
+                "raw": step4_raw,
+                "citations": step4_citations
             }
             
             yield {
@@ -294,9 +304,10 @@ class ResearchOrchestrator:
             # Get recent web data for executive names if search is available
             # Use multiple targeted searches for better executive name discovery
             web_context = ""
+            step5_citations = []
             if self.search_client:
-                web_context = self.search_client.search_executives_multi(company_name)
-                self.metadata["tavily_searches"] += 6  # 6 targeted executive searches
+                web_context, step5_citations = self.search_client.search_executives_multi(company_name)
+                self.metadata["tavily_searches"] += 10  # 10 targeted searches (6 C-suite + 4 BU-level)
             
             step5_prompt = self.prompts.step5_persona_mapping(
                 company_name, step1_context, step3_raw_contexts, step4_raw
@@ -343,7 +354,8 @@ class ResearchOrchestrator:
             results["steps"]["step5_persona_mapping"] = {
                 "status": "complete",
                 "data": step5_result,
-                "raw": step5_raw
+                "raw": step5_raw,
+                "citations": step5_citations
             }
             
             yield {
@@ -376,7 +388,8 @@ class ResearchOrchestrator:
             results["steps"]["step6_value_realization"] = {
                 "status": "complete",
                 "data": step6_result,
-                "raw": step6_raw
+                "raw": step6_raw,
+                "citations": []  # No web search for step 6
             }
             
             yield {
@@ -409,7 +422,8 @@ class ResearchOrchestrator:
             results["steps"]["step7_outreach_email"] = {
                 "status": "complete",
                 "data": step7_result,
-                "raw": step7_raw
+                "raw": step7_raw,
+                "citations": []  # No web search for step 7
             }
             
             yield {

@@ -433,28 +433,32 @@ const ResearchForm = () => {
     if (!results) return null;
     
     let content = results.steps[stepKey];
+    let citations = [];
     
-    // Extract data from backend response structure
-    if (typeof content === 'object' && content !== null && content.data) {
-      content = content.data;
+    // Extract data and citations from backend response structure
+    if (typeof content === 'object' && content !== null) {
+      citations = content.citations || [];
+      if (content.data) {
+        content = content.data;
+      }
     }
     
     // Route to appropriate JSON renderer
     switch(stepKey) {
       case 'step1_strategic_objectives':
-        return <RenderStep1 data={content} />;
+        return <RenderStep1 data={content} citations={citations} />;
       case 'step2_bu_alignment':
-        return <RenderStep2 data={content} />;
+        return <RenderStep2 data={content} citations={citations} />;
       case 'step3_bu_deepdive':
-        return <RenderStep3 data={content} />;
+        return <RenderStep3 data={content} citations={citations} />;
       case 'step4_ai_alignment':
-        return <RenderStep4 data={content} />;
+        return <RenderStep4 data={content} citations={citations} />;
       case 'step5_persona_mapping':
-        return <RenderStep5 data={content} />;
+        return <RenderStep5 data={content} citations={citations} />;
       case 'step6_value_realization':
-        return <RenderStep6 data={content} />;
+        return <RenderStep6 data={content} citations={citations} />;
       case 'step7_outreach_email':
-        return <RenderStep7 data={content} />;
+        return <RenderStep7 data={content} citations={citations} />;
       default:
         // Fallback for unexpected format
         return <Text>{JSON.stringify(content, null, 2)}</Text>;
@@ -763,7 +767,7 @@ const ResearchForm = () => {
                       <HStack spacing={4} fontSize="sm" color="gray.600">
                         <Text>📊 {company.report_count} {company.report_count === 1 ? 'report' : 'reports'}</Text>
                         {company.latest_research && (
-                          <Text>📅 Last: {new Date(company.latest_research).toLocaleDateString()}</Text>
+                          <Text>📅 {company.days_old} {company.days_old === 1 ? 'day' : 'days'} ago</Text>
                         )}
                       </HStack>
                       <Button

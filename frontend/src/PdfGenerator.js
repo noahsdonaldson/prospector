@@ -640,6 +640,79 @@ export const generatePDFFromJSON = (results) => {
     }
   }
   
+  // Appendix: Citations & Sources
+  const allCitations = [];
+  
+  // Collect all citations from all steps
+  Object.keys(results.steps).forEach((stepKey) => {
+    const step = results.steps[stepKey];
+    if (step && step.citations && step.citations.length > 0) {
+      step.citations.forEach((citation) => {
+        // Avoid duplicates
+        if (!allCitations.find(c => c.url === citation.url)) {
+          allCitations.push({
+            ...citation,
+            step: stepKey.replace(/_/g, ' ').replace(/step\d+/, '').trim()
+          });
+        }
+      });
+    }
+  });
+  
+  if (allCitations.length > 0) {
+    doc.addPage();
+    yPosition = 20;
+    
+    addHeading('Appendix: Sources & Citations', 1);
+    yPosition += 3;
+    
+    addText('All sources referenced during research:', 0);
+    yPosition += 5;
+    
+    allCitations.forEach((citation, idx) => {
+      checkNewPage(15);
+      
+      // Citation number
+      doc.setFont('helvetica', 'bold');
+      doc.text(`[${idx + 1}]`, margin, yPosition);
+      doc.setFont('helvetica', 'normal');
+      
+      // Title
+      doc.setFont('helvetica', 'bold');
+      const titleLines = doc.splitTextToSize(citation.title, maxWidth - 10);
+      titleLines.forEach((line) => {
+        checkNewPage();
+        doc.text(line, margin + 8, yPosition);
+        yPosition += 5;
+      });
+      doc.setFont('helvetica', 'normal');
+      
+      // URL
+      doc.setFontSize(8);
+      doc.setTextColor(29, 78, 216); // blue
+      const urlLines = doc.splitTextToSize(citation.url, maxWidth - 10);
+      urlLines.forEach((line) => {
+        checkNewPage();
+        doc.text(line, margin + 8, yPosition);
+        yPosition += 4;
+      });
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+      
+      // Relevance score
+      if (citation.relevance_score) {
+        doc.setFontSize(8);
+        doc.setTextColor(107, 114, 128); // gray
+        doc.text(`Relevance: ${(citation.relevance_score * 100).toFixed(0)}%`, margin + 8, yPosition);
+        yPosition += 4;
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+      }
+      
+      yPosition += 3;
+    });
+  }
+  
   // Save the PDF
   const companyName = results.company_name || 'Company';
   const sanitizedName = companyName.replace(/[^a-z0-9]/gi, '_');

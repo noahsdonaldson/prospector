@@ -211,14 +211,25 @@ async def fuzzy_match_company(name: str, threshold: float = 0.6, db: Session = D
             # Get latest report for this company
             latest_report = db.query(Report).filter(Report.company_id == company.id).order_by(Report.created_at.desc()).first()
             
-            matches.append({
-                "id": company.id,
-                "name": company.name,
-                "similarity": round(ratio * 100, 1),  # Convert to percentage
-                "has_reports": latest_report is not None,
-                "latest_research": latest_report.created_at.isoformat() if latest_report else None,
-                "report_count": db.query(Report).filter(Report.company_id == company.id).count()
-            })
+            # Check if report is fresh (within 30 days)
+            is_fresh = False
+            if latest_report:
+                days_old = (datetime.now() - latest_report.created_at).days
+                is_fresh = days_old <= 30
+            
+            report_count = db.query(Report).filter(Report.company_id == company.id).count()
+            
+            # Only include if there are reports AND at least one is fresh
+            if report_count > 0 and is_fresh:
+                matches.append({
+                    "id": company.id,
+                    "name": company.name,
+                    "similarity": round(ratio * 100, 1),  # Convert to percentage
+                    "has_reports": True,
+                    "latest_research": latest_report.created_at.isoformat(),
+                    "report_count": report_count,
+                    "days_old": days_old
+                })
     
     # Sort by similarity score (highest first)
     matches.sort(key=lambda x: x["similarity"], reverse=True)

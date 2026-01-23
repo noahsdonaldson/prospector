@@ -504,37 +504,58 @@ const CompanyDetail = () => {
                 <TabPanels>
                   <TabPanel>
                     {viewingReport.steps.step1_strategic_objectives?.data && (
-                      <RenderStep1 data={viewingReport.steps.step1_strategic_objectives.data} />
+                      <RenderStep1 
+                        data={viewingReport.steps.step1_strategic_objectives.data} 
+                        citations={viewingReport.steps.step1_strategic_objectives.citations || []}
+                      />
                     )}
                   </TabPanel>
                   <TabPanel>
                     {viewingReport.steps.step2_bu_alignment?.data && (
-                      <RenderStep2 data={viewingReport.steps.step2_bu_alignment.data} />
+                      <RenderStep2 
+                        data={viewingReport.steps.step2_bu_alignment.data}
+                        citations={viewingReport.steps.step2_bu_alignment.citations || []}
+                      />
                     )}
                   </TabPanel>
                   <TabPanel>
                     {viewingReport.steps.step3_bu_deepdive?.data && (
-                      <RenderStep3 data={viewingReport.steps.step3_bu_deepdive.data} />
+                      <RenderStep3 
+                        data={viewingReport.steps.step3_bu_deepdive.data}
+                        citations={viewingReport.steps.step3_bu_deepdive.citations || []}
+                      />
                     )}
                   </TabPanel>
                   <TabPanel>
                     {viewingReport.steps.step4_ai_alignment?.data && (
-                      <RenderStep4 data={viewingReport.steps.step4_ai_alignment.data} />
+                      <RenderStep4 
+                        data={viewingReport.steps.step4_ai_alignment.data}
+                        citations={viewingReport.steps.step4_ai_alignment.citations || []}
+                      />
                     )}
                   </TabPanel>
                   <TabPanel>
                     {viewingReport.steps.step5_persona_mapping?.data && (
-                      <RenderStep5 data={viewingReport.steps.step5_persona_mapping.data} />
+                      <RenderStep5 
+                        data={viewingReport.steps.step5_persona_mapping.data}
+                        citations={viewingReport.steps.step5_persona_mapping.citations || []}
+                      />
                     )}
                   </TabPanel>
                   <TabPanel>
                     {viewingReport.steps.step6_value_realization?.data && (
-                      <RenderStep6 data={viewingReport.steps.step6_value_realization.data} />
+                      <RenderStep6 
+                        data={viewingReport.steps.step6_value_realization.data}
+                        citations={viewingReport.steps.step6_value_realization.citations || []}
+                      />
                     )}
                   </TabPanel>
                   <TabPanel>
                     {viewingReport.steps.step7_outreach_email?.data && (
-                      <RenderStep7 data={viewingReport.steps.step7_outreach_email.data} />
+                      <RenderStep7 
+                        data={viewingReport.steps.step7_outreach_email.data}
+                        citations={viewingReport.steps.step7_outreach_email.citations || []}
+                      />
                     )}
                   </TabPanel>
                 </TabPanels>

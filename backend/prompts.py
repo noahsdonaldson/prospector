@@ -236,23 +236,32 @@ CRITICAL: Return only valid JSON. No markdown."""
 **Context from Step 4:**
 {context4}
 
-**CRITICAL**: You MUST research and find actual executive names. Check:
+**CRITICAL**: You MUST research and find actual executive names at BOTH levels:
+1. **C-Suite Executives** (CFO, CTO, COO, CIO, CDO, CISO, CRO)
+2. **Business Unit Leaders** (Division Presidents, BU Heads, VP-level leaders)
+
+Check:
 - Company website leadership/management pages
 - LinkedIn executive profiles  
 - Press releases and news articles
 - Annual reports and SEC filings
 - Recent earnings call transcripts
+- Business unit-specific press releases
 
 Do NOT use "TBD" unless you have exhausted all public sources.
 
 **Task Requirements**
-1. Identify 3-5 specific executives WITH ACTUAL NAMES and exact titles
+1. Identify 5-8 specific executives WITH ACTUAL NAMES:
+   - Include 2-3 C-suite executives (strategic buyers)
+   - Include 3-5 BU-level leaders (operational champions)
 2. Map their buying committee roles (Economic Buyer, Champion, Technical Evaluator, etc.)
 3. Assess decision authority (Budget owner, Influencer, Approver, End user)
 4. Define "Why Now" pain points for each persona
 5. Map AI solutions to their specific challenges
 6. Identify engagement barriers and enablers
 7. Assign outreach priority (1-5, where 1 is highest)
+
+**STRATEGY**: BU leaders are often more accessible than C-suite and can champion solutions upward. Prioritize those with direct operational pain points.
 
 **OUTPUT FORMAT - RETURN VALID JSON ONLY**
 
@@ -262,6 +271,7 @@ Do NOT use "TBD" unless you have exhausted all public sources.
     {{
       "name": "Actual Executive Name",
       "title": "Exact job title",
+      "level": "C-Suite/BU Leader/VP/Director",
       "business_unit": "BU they oversee",
       "buying_role": "Economic Buyer/Champion/Technical Evaluator/Influencer/Blocker",
       "decision_authority": "Budget Owner/Final Approver/Recommender/End User",
@@ -277,11 +287,11 @@ Do NOT use "TBD" unless you have exhausted all public sources.
       "data_source": "Where you found this person's name/role"
     }}
   ],
-  "buying_committee_summary": "Overview of decision-making structure and power dynamics",
+  "buying_committee_summary": "Overview of decision-making structure and power dynamics, including both C-suite approvers and BU-level champions",
   "research_note": "Explain research methodology if names were difficult to find"
 }}
 
-CRITICAL: Name field MUST contain actual executive names from public sources. Return only valid JSON."""
+CRITICAL: Name field MUST contain actual executive names from public sources. Include both C-suite AND BU leaders. Return only valid JSON."""
 
     def step6_value_realization(self, company_name: str, step1_context: str, step3_contexts: dict, step4_context: str, step5_context: str) -> str:
         context1 = step1_context[:1000] if len(step1_context) > 1000 else step1_context

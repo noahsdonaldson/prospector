@@ -1,8 +1,50 @@
 import React from 'react';
-import { Box, Heading, Text, VStack, HStack, Badge, Table, Thead, Tbody, Tr, Th, Td, UnorderedList, ListItem, Divider } from '@chakra-ui/react';
+import { Box, Heading, Text, VStack, HStack, Badge, Table, Thead, Tbody, Tr, Th, Td, UnorderedList, ListItem, Divider, Link } from '@chakra-ui/react';
+import { ExternalLink, FileText } from 'lucide-react';
+
+// Reusable Citations Component
+const CitationsSection = ({ citations }) => {
+  if (!citations || citations.length === 0) return null;
+  
+  return (
+    <Box mt={6} pt={4} borderTopWidth={2} borderColor="gray.300">
+      <HStack spacing={2} mb={3}>
+        <FileText size={18} color="#4B5563" />
+        <Heading size="sm" color="gray.700">Sources & Citations</Heading>
+      </HStack>
+      <VStack align="stretch" spacing={2}>
+        {citations.map((citation, idx) => (
+          <HStack key={idx} spacing={3} bg="gray.50" p={3} rounded="md" borderWidth={1} borderColor="gray.200">
+            <Badge colorScheme="blue" fontSize="xs">{idx + 1}</Badge>
+            <Box flex="1">
+              <Link 
+                href={citation.url} 
+                isExternal 
+                color="blue.600" 
+                fontWeight="semibold" 
+                fontSize="sm"
+                _hover={{ color: 'blue.800', textDecoration: 'underline' }}
+              >
+                <HStack spacing={1}>
+                  <Text>{citation.title}</Text>
+                  <ExternalLink size={12} />
+                </HStack>
+              </Link>
+              {citation.relevance_score && (
+                <Text fontSize="xs" color="gray.500">
+                  Relevance: {(citation.relevance_score * 100).toFixed(0)}%
+                </Text>
+              )}
+            </Box>
+          </HStack>
+        ))}
+      </VStack>
+    </Box>
+  );
+};
 
 // Render Step 1: Strategic Objectives
-export const RenderStep1 = ({ data }) => {
+export const RenderStep1 = ({ data, citations }) => {
   if (!data || typeof data !== 'object') return <Text color="red.500">Invalid data format</Text>;
   
   if (data.error || data.fallback) {
@@ -54,12 +96,14 @@ export const RenderStep1 = ({ data }) => {
       {data.data_quality_note && (
         <Text fontSize="xs" color="gray.500" fontStyle="italic">{data.data_quality_note}</Text>
       )}
+      
+      <CitationsSection citations={citations} />
     </VStack>
   );
 };
 
 // Render Step 2: Business Unit Alignment
-export const RenderStep2 = ({ data }) => {
+export const RenderStep2 = ({ data, citations }) => {
   if (!data || typeof data !== 'object') return <Text color="red.500">Invalid data format</Text>;
   
   if (data.error || data.fallback) {
@@ -100,12 +144,14 @@ export const RenderStep2 = ({ data }) => {
           </Tbody>
         </Table>
       )}
+      
+      <CitationsSection citations={citations} />
     </VStack>
   );
 };
 
 // Render Step 3: Business Unit Deep Dive
-export const RenderStep3 = ({ data }) => {
+export const RenderStep3 = ({ data, citations }) => {
   if (!data || typeof data !== 'object') return <Text color="red.500">Invalid data format</Text>;
   
   return (
@@ -174,12 +220,14 @@ export const RenderStep3 = ({ data }) => {
           </Box>
         );
       })}
+      
+      <CitationsSection citations={citations} />
     </VStack>
   );
 };
 
 // Render Step 4: AI Alignment
-export const RenderStep4 = ({ data }) => {
+export const RenderStep4 = ({ data, citations }) => {
   if (!data || typeof data !== 'object') return <Text color="red.500">Invalid data format</Text>;
   
   if (data.error || data.fallback) {
@@ -209,12 +257,14 @@ export const RenderStep4 = ({ data }) => {
           ))}
         </VStack>
       )}
+      
+      <CitationsSection citations={citations} />
     </VStack>
   );
 };
 
 // Render Step 5: Persona Mapping
-export const RenderStep5 = ({ data }) => {
+export const RenderStep5 = ({ data, citations }) => {
   if (!data || typeof data !== 'object') return <Text color="red.500">Invalid data format</Text>;
   
   if (data.error || data.fallback) {
@@ -310,12 +360,14 @@ export const RenderStep5 = ({ data }) => {
       {data.research_note && (
         <Text fontSize="xs" color="gray.500" fontStyle="italic">{data.research_note}</Text>
       )}
+      
+      <CitationsSection citations={citations} />
     </VStack>
   );
 };
 
 // Render Step 6: Value Realization
-export const RenderStep6 = ({ data }) => {
+export const RenderStep6 = ({ data, citations }) => {
   if (!data || typeof data !== 'object') return <Text color="red.500">Invalid data format</Text>;
   
   if (data.error || data.fallback) {
@@ -476,12 +528,14 @@ export const RenderStep6 = ({ data }) => {
           ))}
         </VStack>
       )}
+      
+      <CitationsSection citations={citations} />
     </VStack>
   );
 };
 
 // Render Step 7: Outreach Email
-export const RenderStep7 = ({ data }) => {
+export const RenderStep7 = ({ data, citations }) => {
   if (!data || typeof data !== 'object') return <Text color="red.500">Invalid data format</Text>;
   
   if (data.error || data.fallback) {
@@ -523,6 +577,8 @@ export const RenderStep7 = ({ data }) => {
           </UnorderedList>
         </Box>
       )}
+      
+      <CitationsSection citations={citations} />
     </VStack>
   );
 };
