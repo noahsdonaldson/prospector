@@ -55,6 +55,11 @@ Thumbs.db
 .env
 *.local
 
+# Deployment files (keep private)
+docker-compose.prod.yml
+.env.example
+DEPLOYMENT.md
+
 # Logs
 *.log
 logs/
