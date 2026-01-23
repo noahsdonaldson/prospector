@@ -482,11 +482,11 @@ const ResearchForm = () => {
       }}
     >
       {/* Animated Banner Header */}
-      <Box bg="gray.700" py={8} shadow="md" position="relative" zIndex={2}>
+      <Box bg="gray.700" py={3} shadow="md" position="relative" zIndex={2}>
         <Container maxW="7xl">
-          <HStack justify="center" spacing={6}>
-            <Text fontSize="8xl" className="float-animate">⛏️</Text>
-            <Heading size="4xl" color="white" fontWeight="black" fontFamily="'Montserrat', sans-serif">
+          <HStack justify="center" spacing={3}>
+            <Text fontSize="4xl" className="float-animate">⛏️</Text>
+            <Heading size="xl" color="white" fontWeight="black" fontFamily="'Montserrat', sans-serif">
               PROSPECTOR
             </Heading>
           </HStack>
@@ -494,7 +494,7 @@ const ResearchForm = () => {
       </Box>
 
       {/* Main Content */}
-      <Container maxW="5xl" py={12} position="relative" zIndex={1}>
+      <Container maxW="5xl" py={6} position="relative" zIndex={1}>
         <Box bg="white" rounded="md" shadow="md" borderWidth={1} borderColor="gray.200" overflow="hidden">
           <Box p={{ base: 8, md: 12 }}>
             {/* Input Section */}
