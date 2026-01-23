@@ -177,13 +177,73 @@ Open your browser to: **http://localhost:3000**
 
 ## ✨ Key Features
 
-- **Real-time Progress Streaming**: See each step complete as it happens
+### Research Generation
+- **Real-time Progress Streaming**: See each step complete as it happens with fun icons
 - **Markdown Table Rendering**: Clean, formatted tables in the UI
 - **PDF Export**: Download research as professionally formatted PDF
 - **Executive Name Discovery**: Multi-search validation finds actual decision-maker names
 - **Automatic Retry Logic**: Validates persona data and retries if names missing
 - **Clean HTML/Markdown Stripping**: Tables and PDFs show clean text without markup
-- **Grey Color Scheme**: Professional, easy-to-read interface
+
+### Research Validation (NEW)
+- **Judge LLM System**: Independent validation using OpenAI GPT-4o
+- **Streaming Progress**: Real-time validation updates with step-by-step icons (🏢🎯💻🤖👥💰📧)
+- **Comprehensive Scoring**: 0-100 scale with GREEN/YELLOW/RED status indicators
+- **8-Step Validation**: Validates all 7 research steps plus cross-step consistency
+- **Detailed Feedback**: Citations quality, accuracy, completeness, and recommendations
+- **Critical Issues Alerts**: Highlights red flags and warnings that need attention
+
+### Data Persistence
+- **PostgreSQL Database**: Track research history and company records
+- **Industry Classification**: Auto-categorize companies by vertical
+
+## 🛡️ Research Validation System (NEW)
+
+After generating research, validate its quality using an independent Judge LLM:
+
+**How it works:**
+1. Select a completed research report
+2.Per validation report:**
+- **OpenAI GPT-4o** (Judge): ~$0.50-1.00 per validation (8 LLM calls)
+
+**Without Tavily**: Same LLM costs, but uses training data instead of real-time web results
+
+The tool makes 7+ LLM API calls per research report (more if there are multiple business units in Step 3), plus 10-15 Tavily searches if enabled. Validation makes 8 additional calls (7 steps + overall)
+
+**Validation Criteria (per step):**
+- **Citation Quality** (30 points): Are sources credible and properly cited?
+- **Prompt Adherence** (30 points): Does output match requirements?
+- **Accuracy & Consistency** (30 points): Is information factually correct?
+- **Completeness** (10 points): Are all sections filled out?
+
+**Overall Validation:**
+- **Cross-step Consistency** (40 points): Do all steps align logically?
+- **Coherence** (30 points): Does the narrative flow make sense?
+- **Actionability** (30 points): Can sales teams use this effectively?
+
+**Scoring:**
+- 🟢 **GREEN (85-100)**: High-quality research, ready to use
+- 🟡 **YELLOW (70-84)**: Good research, minor improvements suggested
+- 🔴 **RED (<70)**: Needs significant revision
+
+**Validation Report Includes:**
+- Overall score and status
+- Individual step scores with status badges
+- Critical issues (must fix)
+- Warnings (should address)
+- Strengths (what's working well)
+- Actionable recommendations
+- **Staleness Detection**: See when research was last updated
+- **Persona Management**: Add custom personas for targeted research, openai, anthropic)
+│   ├── main.py                 # FastAPI server with SSE + database + validation endpoints
+│   ├── research.py             # 7-step orchestrator with validation + metadata
+│   ├── llm_client.py           # LLM API client (Claude/GPT-4) for research
+│   ├── judge_client.py         # OpenAI GPT-4o client for validation
+│   ├── search_client.py        # Tavily search integration
+│   ├── prompts.py              # All 7 research prompt templates with industry extraction
+│   ├── prompts_judge.py        # Validation prompts with scoring criteria
+│   ├── validation.py           # Research validator orchestrator
+- **Animated Progress Bars**: Visual feedback during long-running operations
 
 ## 📊 The 7-Step Research Process
 
@@ -193,7 +253,12 @@ Open your browser to: **http://localhost:3000**
 4. **AI Alignment** - Identify AI use cases aligned to objectives (with web search)
 5. **Persona Mapping** - Key decision makers with actual names and titles (multi-targeted executive search + validation)
 6. **Value Realization** - Quantifiable value propositions mapped to personas
-7. **Outreach Email** - Personalized outreach templates
+7. **Out├── App.js              # React UI with auto-save to database
+        ├── ResearchForm.js     # Research generation with streaming progress
+        ├── CompanyDetail.js    # Company reports and validation
+        ├── ValidationReport.js # Validation results display
+        ├── PdfGenerator.js     # PDF export functionality
+        └── JsonRenderers.js    # Markdown table rendering
 
 Each step streams progress updates in real-time, and results are displayed in formatted tables with markdown support.
 
@@ -207,7 +272,8 @@ Each step streams progress updates in real-time, and results are displayed in fo
 
 The tool makes 7+ LLM API calls per company (more if there are multiple business units in Step 3), plus 10-15 Tavily searches if enabled.
 
-## 📁 Project Structure
+## POST /api/reports/{id}/validate` - Validate research report (streaming SSE response)
+- `📁 Project Structure
 
 ```
 prospector/
@@ -361,12 +427,21 @@ docker-compose up --build
 3. Get your API key from dashboard
 4. 1,000 free searches per month
 5. Copy the key (starts with `tvly-...`)
+### January 2026
+- **Judge LLM Validation System**: Independent quality validation with OpenAI GPT-4o
+- **Streaming Validation Progress**: Real-time validation updates with step icons and scores
+- **Comprehensive Scoring**: 8-step validation with RED/YELLOW/GREEN status
+- **Validation Reports**: Detailed feedback with strengths, issues, and recommendations
+- **Docker Hub Deployment**: Production-ready containerization for easy deployment
 
-## 🚢 Production Deployment
-
-For production deployment, consider:
-
-1. **Remove volume mounts** from `docker-compose.yml` (used for development hot-reload)
+### Earlier Updates
+- **Tavily Integration**: Real-time web search for current data
+- **Multi-targeted Executive Search**: 6 separate searches for C-suite names
+- **Validation & Retry Logic**: Automatically retries if names not found
+- **PDF Export**: Professional formatting with tables, headers, bullets
+- **Markdown Stripping**: Clean HTML/markdown removal from tables
+- **Database Persistence**: PostgreSQL for research history and company tracking
+- **Industry Classification**: Auto-categorize companies by vertical-reload)
 2. **Add environment variables** for API keys instead of user input
 3. **Use nginx** as reverse proxy
 4. **Add HTTPS** with SSL certificates
